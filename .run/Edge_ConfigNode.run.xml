@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Edge_ConfigNode" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="org.apache.iotdb.confignode.service.ConfigNode" />
+    <module name="iotdb-confignode" />
+    <option name="VM_PARAMETERS" value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5201 -DCONFIGNODE_CONF=./conf_edge -Dlogback.configureationFile=./conf_edge/logback-confignode.xml -DTSFILE=./conf_edge -Dname=iotdb/.ConfigNodeEdge -DIOTDB_CONF=./conf_edge" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="org.apache.iotdb.confignode.service.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
