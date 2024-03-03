@@ -93,6 +93,20 @@ import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNod
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
 
+import org.apache.iotdb.db.zcy.service.CtoEService;
+import org.apache.iotdb.db.zcy.service.TSInfo;
+
+import org.apache.thrift.transport.TServerSocket;
+import org.apache.thrift.transport.TServerTransport;
+import org.apache.thrift.transport.TTransportException;
+import org.apache.thrift.server.TServer;
+import org.apache.thrift.server.TSimpleServer;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.TException;
+import java.net.InetSocketAddress;
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
  * frame. It takes three main responsibilities: 1. Prepare a query. Transform a query from statement
@@ -206,6 +220,40 @@ public class QueryExecution implements IQueryExecution {
 
   public void start() {
     final long startTime = System.nanoTime();
+
+    try {
+      // 创建 Thrift 服务器端
+      InetSocketAddress address = new InetSocketAddress("localhost", 11234);
+      ServiceImpl handler = new ServiceImpl();
+      CtoEService.Processor processor = new CtoEService.Processor(handler);
+      TServerTransport serverTransport = new TServerSocket(address);
+      TServer server = new TSimpleServer(new TServer.Args(serverTransport).processor(processor));
+      // 启动服务器
+      System.out.println("Starting the receiver server...");
+      server.serve();
+      System.out.println("Starting the receiver server successful");
+    } catch (TTransportException e) {
+      e.printStackTrace();
+    }
+
+    try (TTransport transport = new TSocket("localhost", 11234)) {
+      TProtocol protocol = new TBinaryProtocol(transport);
+      CtoEService.Client client = new CtoEService.Client(protocol);
+      transport.open();
+      // 调用服务方法
+      TSInfo dataToSend = new TSInfo(11, 12, 13, 14);
+      client.sendData(dataToSend);
+      System.out.println("Data sent successfully.");
+      TSInfo receivedata = client.receiveData();
+      System.out.println(receivedata);
+
+    } catch (TException x) {
+      x.printStackTrace();
+    }
+
+
+
+
     if (skipExecute()) {
       logger.debug("[SkipExecute]");
       if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
