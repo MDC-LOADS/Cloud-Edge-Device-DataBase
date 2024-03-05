@@ -96,17 +96,13 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DIST
 import org.apache.iotdb.db.zcy.service.CtoEService;
 import org.apache.iotdb.db.zcy.service.TSInfo;
 
-import org.apache.thrift.transport.TServerSocket;
-import org.apache.thrift.transport.TServerTransport;
-import org.apache.thrift.transport.TTransportException;
-import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.TSimpleServer;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.TException;
-import java.net.InetSocketAddress;
+import org.apache.thrift.transport.layered.TFramedTransport;
+
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
  * frame. It takes three main responsibilities: 1. Prepare a query. Transform a query from statement
@@ -163,6 +159,7 @@ public class QueryExecution implements IQueryExecution {
       QueryPlanCostMetricSet.getInstance();
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
+  public boolean ServerisOpen = false;//服务器开启标志
 
   @SuppressWarnings("squid:S107")
   public QueryExecution(
@@ -220,23 +217,36 @@ public class QueryExecution implements IQueryExecution {
 
   public void start() {
     final long startTime = System.nanoTime();
+//    Thread serverThread = new Thread(new ServerRunnable());//启动服务器
+//    serverThread.start();
 
-    try {
-      // 创建 Thrift 服务器端
-      InetSocketAddress address = new InetSocketAddress("localhost", 11234);
-      ServiceImpl handler = new ServiceImpl();
-      CtoEService.Processor processor = new CtoEService.Processor(handler);
-      TServerTransport serverTransport = new TServerSocket(address);
-      TServer server = new TSimpleServer(new TServer.Args(serverTransport).processor(processor));
-      // 启动服务器
-      System.out.println("Starting the receiver server...");
-      server.serve();
-      System.out.println("Starting the receiver server successful");
-    } catch (TTransportException e) {
-      e.printStackTrace();
-    }
 
-    try (TTransport transport = new TSocket("localhost", 11234)) {
+    //thrift测试
+    //多线程阻塞版本
+//    TTransport transport = null;
+//    try  {
+//      transport =  new TSocket("localhost", 9090);
+//      TProtocol protocol = new TBinaryProtocol(transport);
+//      CtoEService.Client client = new CtoEService.Client(protocol);
+//      transport.open();
+//      // 调用服务方法
+//      TSInfo dataToSend = new TSInfo(11, 12, 13, 14);
+//      client.sendData(dataToSend);
+//      System.out.println("Data sent successfully.");
+//      TSInfo receivedata = client.receiveData();
+//      System.out.println(receivedata);
+//
+//    } catch (TException x) {
+//      x.printStackTrace();
+//    }finally {
+//      if(null!=transport){
+//        transport.close();
+//      }
+//    }
+    //多线程非阻塞版本
+    TTransport transport = null;
+    try  {
+      transport =  new TFramedTransport(new TSocket("localhost", 9090));
       TProtocol protocol = new TBinaryProtocol(transport);
       CtoEService.Client client = new CtoEService.Client(protocol);
       transport.open();
@@ -249,6 +259,10 @@ public class QueryExecution implements IQueryExecution {
 
     } catch (TException x) {
       x.printStackTrace();
+    }finally {
+      if(null!=transport){
+        transport.close();
+      }
     }
 
 
@@ -822,3 +836,11 @@ public class QueryExecution implements IQueryExecution {
     return String.format("QueryExecution[%s]", context.getQueryId());
   }
 }
+//class ServerRunnable implements Runnable {
+//  @Override
+//  public void run() {
+//    // 创建并启动服务器
+//    ServerStart server = new ServerStart();
+//    server.start();
+//  }
+//}

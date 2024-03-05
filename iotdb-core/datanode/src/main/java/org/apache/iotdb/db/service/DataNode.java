@@ -69,6 +69,7 @@ import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.schedule.DriverScheduler;
+import org.apache.iotdb.db.queryengine.plan.execution.ServerStart;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
@@ -157,6 +158,10 @@ public class DataNode implements DataNodeMBean {
   public static void main(String[] args) {
     logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
     logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
+    //新建thrift服务器
+    Thread serverThread = new Thread(new ServerRunnable());//启动服务器
+    serverThread.start();
+
     new DataNodeServerCommandLine().doMain(args);
   }
 
@@ -955,5 +960,13 @@ public class DataNode implements DataNodeMBean {
     private DataNodeHolder() {
       // Empty constructor
     }
+  }
+}
+class ServerRunnable implements Runnable {
+  @Override
+  public void run() {
+    // 创建并启动服务器
+    ServerStart server = new ServerStart();
+    server.start();
   }
 }
