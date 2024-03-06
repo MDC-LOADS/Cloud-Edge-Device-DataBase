@@ -182,7 +182,7 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   // used for compaction
-  private FragmentInstanceContext(long queryId) {
+  public FragmentInstanceContext(long queryId) {//由private改为public了
     this.queryId = queryId;
     this.id = null;
     this.stateMachine = null;

@@ -177,7 +177,7 @@ public class SourceHandle implements ISourceHandle {
 
       if (!blocked.isDone()) {
         throw new IllegalStateException("Source handle is blocked.");
-      }
+      }//一直报错被注释了
 
       ByteBuffer tsBlock = sequenceIdToTsBlock.remove(currSequenceId);
       if (tsBlock == null) {

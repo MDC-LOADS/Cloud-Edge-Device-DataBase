@@ -244,27 +244,29 @@ public class QueryExecution implements IQueryExecution {
 //      }
 //    }
     //多线程非阻塞版本
-    TTransport transport = null;
-    try  {
-      transport =  new TFramedTransport(new TSocket("localhost", 9090));
-      TProtocol protocol = new TBinaryProtocol(transport);
-      CtoEService.Client client = new CtoEService.Client(protocol);
-      transport.open();
-      // 调用服务方法
-      TSInfo dataToSend = new TSInfo(11, 12, 13, 14);
-      client.sendData(dataToSend);
-      System.out.println("Data sent successfully.");
-      TSInfo receivedata = client.receiveData();
-      System.out.println(receivedata);
-
-    } catch (TException x) {
-      x.printStackTrace();
-    }finally {
-      if(null!=transport){
-        transport.close();
-      }
-    }
-
+//    TTransport transport = null;
+//    try  {
+//      transport =  new TFramedTransport(new TSocket("localhost", 9090));
+//      TProtocol protocol = new TBinaryProtocol(transport);
+//      CtoEService.Client client = new CtoEService.Client(protocol);
+//      transport.open();
+//      // 调用服务方法
+//
+//      TSInfo receivedata = client.receiveData();
+//      System.out.println("Data receive successfully.");
+//      System.out.println(receivedata);
+//
+//    } catch (TException x) {
+//      x.printStackTrace();
+//    }finally {
+//      if(null!=transport){
+//        transport.close();
+//      }
+//    }
+    Thread thread_send = new Thread(new SendRunnable());//发送数据测试
+    thread_send.start();
+    Thread thread_receive = new Thread(new ReceiveRunnable());//接收数据测试
+    thread_receive.start();
 
 
 
@@ -844,3 +846,18 @@ public class QueryExecution implements IQueryExecution {
 //    server.start();
 //  }
 //}
+class SendRunnable implements Runnable {
+  @Override
+  public void run() {
+    SendTsBlock send=new SendTsBlock();
+    send.send();
+
+  }
+}
+class ReceiveRunnable implements Runnable {
+  @Override
+  public void run() {
+    ReceiveTsBlock receive=new ReceiveTsBlock();
+    receive.receive();
+  }
+}

@@ -710,6 +710,30 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             localFragmentInstanceId, instanceContext, instanceContext::failed, cnt),
         mppDataExchangeServiceClientManager);
   }
+  public SinkChannel createSinkChannelcloud(//新建
+          TFragmentInstanceId localFragmentInstanceId,
+          TEndPoint remoteEndpoint,
+          TFragmentInstanceId remoteFragmentInstanceId,
+          String remotePlanNodeId,
+          String localPlanNodeId,
+          // TODO: replace with callbacks to decouple MPPDataExchangeManager from
+          // FragmentInstanceContext
+          FragmentInstanceContext instanceContext,
+          AtomicInteger cnt
+  ){
+    return new SinkChannel(
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            remotePlanNodeId,
+            localPlanNodeId,
+            localFragmentInstanceId,
+            localMemoryManager,
+            executorService,
+            tsBlockSerdeFactory.get(),
+            new ISinkChannelListenerImpl(
+                    localFragmentInstanceId, instanceContext, instanceContext::failed, cnt),
+            mppDataExchangeServiceClientManager);
+  }
 
   @Override
   public ISinkHandle createShuffleSinkHandle(
