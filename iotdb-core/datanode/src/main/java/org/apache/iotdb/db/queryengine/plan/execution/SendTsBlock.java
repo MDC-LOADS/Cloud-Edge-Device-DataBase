@@ -23,14 +23,15 @@ public class SendTsBlock {
     private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
             MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
     public void send(){
-        final String queryId = "test_query";
+        final String queryId_r = "test_query_r";
+        final String queryId_s = "test_query_s";
         final TEndPoint remoteEndpoint = new TEndPoint("localhost", 10740);
-        final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
-        final String remotePlanNodeId = "exchange_test";
-        final String localPlanNodeId = "Sink_test";
-        final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
+        final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId_r, 1, "0");
+        final String remotePlanNodeId = "receive_test";
+        final String localPlanNodeId = "send_test";
+        final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId_s, 0, "0");
 
-        int channelNum = 0;
+        int channelNum = 1;
         AtomicInteger cnt = new AtomicInteger(channelNum);
         long query_num=1;
         FragmentInstanceContext instanceContext = new FragmentInstanceContext(query_num);
@@ -57,6 +58,7 @@ public class SendTsBlock {
         TsBlock tsBlock2 = new TsBlock(timeColumn2, column2);
         mockTsBlocks.add(tsBlock);
         mockTsBlocks.add(tsBlock2);
+        sinkChannel.send(tsBlock);//
         System.out.println("tsBlock need to send:");
         Column[] valueColumns = tsBlock.getValueColumns();
         System.out.println(" columns:");
@@ -80,30 +82,36 @@ public class SendTsBlock {
         for(long time:times2){
             System.out.println(time);
         }
-
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-        sinkChannel.send(mockTsBlocks.get(0));
+        sinkChannel.send(tsBlock);
+        sinkChannel.close();
+//        try {
+//            Thread.sleep(10000);
+//        } catch (InterruptedException e) {
+//            throw new RuntimeException(e);
+//        }
+//        sinkChannel.send(mockTsBlocks.get(0));
         System.out.println("send successfully");
-        int numOfMockTsBlock = 2;
-        for (int i = 0; i < numOfMockTsBlock; i++) {
-            try {
-                sinkChannel.getSerializedTsBlock(i);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        System.out.println("getSerializedTsBlock successfully");
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-        sinkChannel.acknowledgeTsBlock(0, numOfMockTsBlock);
-        System.out.println("acknowledgeTsBlock successfully");
-
+//        try {
+//            Thread.sleep(5000);
+//        } catch (InterruptedException e) {
+//            throw new RuntimeException(e);
+//        }
+//        int numOfMockTsBlock = 1;
+//        for (int i = 0; i < numOfMockTsBlock; i++) {
+//            try {
+//                sinkChannel.getSerializedTsBlock(i);
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//        System.out.println("getSerializedTsBlock successfully");
+////        try {
+////            Thread.sleep(10000);
+////        } catch (InterruptedException e) {
+////            throw new RuntimeException(e);
+////        }
+//        sinkChannel.acknowledgeTsBlock(0, numOfMockTsBlock);
+//        System.out.println("acknowledgeTsBlock successfully");
+//
     }
 }

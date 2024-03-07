@@ -18,11 +18,12 @@ public class ReceiveTsBlock {
     private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
             MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
     public void receive(){
-        final String queryId = "test_query";
+        final String queryId_r = "test_query_r";
+        final String queryId_s = "test_query_s";
         final TEndPoint remoteEndpoint = new TEndPoint("localhost", 10740);
-        final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
+        final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId_s, 0, "0");
         final String localPlanNodeId = "receive_test";
-        final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
+        final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId_r, 1, "0");
         long query_num=1;
         FragmentInstanceContext instanceContext = new FragmentInstanceContext(query_num);
         ISourceHandle sourceHandle =MPP_DATA_EXCHANGE_MANAGER.createSourceHandle(
@@ -32,13 +33,19 @@ public class ReceiveTsBlock {
                 remoteEndpoint,
                 remoteFragmentInstanceId,
                 instanceContext::failed);
+        final long MOCK_TSBLOCK_SIZE = 1024L * 1024L;
+        sourceHandle.setMaxBytesCanReserve(MOCK_TSBLOCK_SIZE);
+        System.out.println("receiver start");
+
         try {
-            Thread.sleep(15000);
+            Thread.sleep(3000);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+        sourceHandle.isBlocked();
         List<TsBlock> tsBlocks = new ArrayList<>();
-        if(!sourceHandle.isFinished()){
+        int num_block=1;
+        for(int i=0;i<num_block;i++){
             TsBlock tsBlock=sourceHandle.receive();
             tsBlocks.add(tsBlock);
         }
