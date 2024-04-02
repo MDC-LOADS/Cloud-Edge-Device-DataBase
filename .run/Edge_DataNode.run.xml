@@ -3,7 +3,7 @@
     <option name="MAIN_CLASS_NAME" value="org.apache.iotdb.db.service.DataNode" />
     <module name="iotdb-server" />
     <option name="PROGRAM_PARAMETERS" value="-s" />
-    <option name="VM_PARAMETERS" value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5211 -DCONFIGNODE_CONF=./conf_edge -Dlogback.configureationFile=./conf_edge/logback-datanode.xml -DTSFILE=./conf_edge -Dname=iotdb/.DataNodeEdge -DIOTDB_CONF=./conf_edge -DIOTDB_HOME=./data_edge -DIOTDB_DATA_HOME=./data_edge" />
+    <option name="VM_PARAMETERS" value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5211 -DCONFIGNODE_CONF=./conf_edge -Dlogback.configureationFile=./conf_edge/logback-datanode.xml -DTSFILE=./conf_edge -Dname=iotdb/.DataNodeEdge -DIOTDB_CONF=./conf_edge" />
     <extension name="coverage">
       <pattern>
         <option name="PATTERN" value="org.apache.iotdb.db.service.*" />

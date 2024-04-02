@@ -99,6 +99,7 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   public static void main(String[] args) {
+
     LOGGER.info(
         "{} environment variables: {}",
         ConfigNodeConstant.GLOBAL_NAME,
