@@ -7,6 +7,7 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.layered.TFramedTransport;
 import oshi.SystemInfo;
 import oshi.hardware.HWDiskStore;
 import oshi.hardware.HWPartition;
@@ -119,16 +120,36 @@ public class LoadDetection {
         return sentBytesPerSecond + receivedBytesPerSecond;
     }
 
-    private static double getclouddatasize(double port, double){
+    private static double getclouddatasize(int port, String address){
 
         double clouddatasize=0;
-
+//        多线程非阻塞版本
+        TTransport transport = null;
+        try  {
+        transport =  new TFramedTransport(new TSocket(address, port));
+        TProtocol protocol = new TBinaryProtocol(transport);
+        CtoEService.Client client = new CtoEService.Client(protocol);
+        transport.open();
+        // 调用服务方法
+        TSInfo dataToReceive = client.receiveData();
+        System.out.println("Data receive successfully.");
         //获取云端数据大小
-
+        clouddatasize = dataToReceive.getSize();
         return clouddatasize;
+
+        } catch (TException x) {
+        x.printStackTrace();
+        }finally {
+        if(null!=transport){
+            transport.close();
+        }
+        }
+        System.out.println("Data receive failed.");
+        return clouddatasize;
+
     }
 
-    private static double getlocaldatasize(double port, String address){
+    private static double getlocaldatasize(int port, String address){
             double fileSizeInMB = 0;
             double fileSizeInKB;
 
@@ -175,13 +196,13 @@ public class LoadDetection {
 
 
     public static void main(String[] args) {
-        double port=7890;
-        String address="a";
+        int port=9090;
+        String address="localhost";
         double readSpeed=getDiskReadSpeed();
         double writeSpeed=getDiskWriteSpeed();
         double BytesPerSecond=getnetworkBandwidth();
         double localdataSize=getlocaldatasize(port,address);
-        double clouddataSize=getclouddatasize();
+        double clouddataSize=getclouddatasize(port,address);
         double flag=performLoadDetection( localdataSize, clouddataSize,writeSpeed,readSpeed,BytesPerSecond);
 
         if (flag==0){
