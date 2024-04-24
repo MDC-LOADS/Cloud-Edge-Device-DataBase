@@ -93,8 +93,7 @@ import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNod
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
 
-import org.apache.iotdb.db.zcy.service.CtoEService;
-import org.apache.iotdb.db.zcy.service.TSInfo;
+
 
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TSocket;
@@ -263,10 +262,10 @@ public class QueryExecution implements IQueryExecution {
 //        transport.close();
 //      }
 //    }
-    Thread thread_send = new Thread(new SendRunnable());//发送数据测试
-    thread_send.start();
-    Thread thread_receive = new Thread(new ReceiveRunnable());//接收数据测试
-    thread_receive.start();
+//    Thread thread_send = new Thread(new SendRunnable());//发送数据测试
+//    thread_send.start();
+//    Thread thread_receive = new Thread(new ReceiveRunnable());//接收数据测试
+//    thread_receive.start();
 
 
 
@@ -846,18 +845,18 @@ public class QueryExecution implements IQueryExecution {
 //    server.start();
 //  }
 //}
-class SendRunnable implements Runnable {
-  @Override
-  public void run() {
-    SendTsBlock send=new SendTsBlock();
-    send.send();
-
-  }
-}
-class ReceiveRunnable implements Runnable {
-  @Override
-  public void run() {
-    ReceiveTsBlock receive=new ReceiveTsBlock();
-    receive.receive();
-  }
-}
+//class SendRunnable implements Runnable {
+//  @Override
+//  public void run() {
+//    SendTsBlock send=new SendTsBlock();
+//    send.send();
+//
+//  }
+//}
+//class ReceiveRunnable implements Runnable {
+//  @Override
+//  public void run() {
+//    ReceiveTsBlock receive=new ReceiveTsBlock();
+//    receive.receive();
+//  }
+//}

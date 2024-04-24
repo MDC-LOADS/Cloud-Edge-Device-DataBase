@@ -135,6 +135,8 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.execution.PipeInfo;
+import org.apache.iotdb.db.queryengine.plan.execution.ScanStatusInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
@@ -214,6 +216,9 @@ import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
+import org.apache.iotdb.db.zcy.service.PipeCtoEService;
+import org.apache.iotdb.db.zcy.service.ScanInfo;
+import org.apache.iotdb.db.zcy.service.PipeEtoCService;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -227,6 +232,12 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.TException;
+import org.apache.thrift.transport.layered.TFramedTransport;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -295,7 +306,27 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     seriesScanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
     seriesScanOptionsBuilder.withLimit(node.getLimit());
-    seriesScanOptionsBuilder.withOffset(node.getOffset());
+//    seriesScanOptionsBuilder.withOffset(node.getOffset());
+    PipeInfo pipeInfo=PipeInfo.getInstance();
+    int fragmentId=pipeInfo.getFragmentId();
+    int sourceId=Integer.parseInt(node.getPlanNodeId().getId());
+    pipeInfo.addScanSatus(sourceId,fragmentId);//添加到表
+    if(pipeInfo.getPipeStatus()){
+      ackSend(fragmentId,sourceId);
+      while(!pipeInfo.getScanStatus(sourceId).getStatus()){//跳出说明接收到修改信号
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
+      seriesScanOptionsBuilder.withOffset(node.getOffset()+pipeInfo.getScanStatus(sourceId).getOffset());
+      //修改偏移量
+
+    }else{
+      seriesScanOptionsBuilder.withOffset(node.getOffset());
+    }
+
 
     OperatorContext operatorContext =
         context
@@ -310,7 +341,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getPlanNodeId(),
             seriesPath,
             node.getScanOrder(),
-            seriesScanOptionsBuilder.build());
+            seriesScanOptionsBuilder.build(),
+            fragmentId);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
@@ -318,7 +350,29 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return seriesScanOperator;
   }
+  public void ackSend(int fragmentId,int sourceId){
+    //多线程非阻塞版本
+    TTransport transport = null;
+    try  {
+      transport =  new TFramedTransport(new TSocket("localhost", 9090));
+      TProtocol protocol = new TBinaryProtocol(transport);
+      PipeEtoCService.Client client = new PipeEtoCService.Client(protocol);
+      transport.open();
+      // 调用服务方法
+      client.AckMessage(fragmentId,sourceId);
+      System.out.println("ackData:"+sourceId+" sent successfully.");
 
+
+    } catch (TException x) {
+      x.printStackTrace();
+    }finally {
+      if(null!=transport){
+        transport.close();
+      }
+    }
+
+
+  }
   @Override
   public Operator visitAlignedSeriesScan(
       AlignedSeriesScanNode node, LocalExecutionPlanContext context) {

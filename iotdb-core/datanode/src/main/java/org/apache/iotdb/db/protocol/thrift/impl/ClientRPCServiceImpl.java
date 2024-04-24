@@ -74,6 +74,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.PipeInfo;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -167,6 +168,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -338,6 +340,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       t = error;
       throw error;
     } finally {
+      PipeInfo.getInstance().clearAllScanStatus();
       long currentOperationCost = System.nanoTime() - startTime;
       COORDINATOR.recordExecutionTime(queryId, currentOperationCost);
 
@@ -2694,5 +2697,78 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
     PipeAgent.receiver().thrift().handleClientExit();
     PipeAgent.receiver().legacy().handleClientExit();
+  }
+  public void excuteIdentitySql(String sql) {
+
+//    long queryId = Long.MIN_VALUE;
+    long queryId = 10L;
+    Throwable t = null;
+
+    try {
+      Statement s = StatementGenerator.createStatement(sql, ZoneId.systemDefault());
+      SessionInfo sessionInfo=new SessionInfo(1L, "root", ZoneId.systemDefault().getId());
+      if (s == null) {
+        return;
+      }
+//      queryId = SESSION_MANAGER.requestQueryId(clientSession, 10086L);
+      // create and cache dataset
+      ExecutionResult result =
+              COORDINATOR.execute(
+                      s,
+                      queryId,
+//                      SESSION_MANAGER.getSessionInfo(clientSession),
+                      sessionInfo,
+                      sql,
+                      partitionFetcher,
+                      schemaFetcher,
+                      1000000000);
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        return;
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+      while (queryExecution.hasNextResult()) {
+        Optional<TsBlock> tsBlock;
+
+        try {
+          tsBlock = queryExecution.getBatchResult();//获取查询结果
+        } catch (IoTDBException e) {
+          throw new RuntimeException("Fetch Schema failed. ", e);
+        }
+        if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
+          break;
+        }
+
+        Column[] valueColumns = tsBlock.get().getValueColumns();
+        System.out.println("receive columns boolean:");
+//        for(Column valueColumn:valueColumns){
+//            System.out.println(valueColumn.getBooleans());
+//        }
+//        System.out.println(valueColumns[0].getBooleans());
+        boolean[] booleanColumn=valueColumns[0].getBooleans();
+        for(boolean booleanObject:booleanColumn){
+          System.out.println(booleanObject);
+        }
+        System.out.println("receive columns binary:");
+        Binary[] binaryColumn=valueColumns[1].getBinaries();
+        for(Binary binaryObject:binaryColumn){
+          System.out.println(binaryObject);
+        }
+        TimeColumn timeColumn=tsBlock.get().getTimeColumn();
+        long[] times=timeColumn.getTimes();
+        System.out.println("receive time columns:");
+        for(long time:times){
+          System.out.println(time);
+        }
+      }
+
+    } catch (RuntimeException e) {
+      throw new RuntimeException(e);
+    }finally {
+      COORDINATOR.cleanupQueryExecution(queryId, t);
+
+    }
   }
 }

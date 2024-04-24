@@ -1,37 +1,51 @@
 package org.apache.iotdb.db.queryengine.plan.execution;
 
 
-import org.apache.iotdb.db.zcy.service.CtoEService;
-import org.apache.iotdb.db.zcy.service.TSInfo;
-public class ServiceImpl implements CtoEService.Iface{
-    private TSInfo message;
+import org.apache.iotdb.db.zcy.service.PipeCtoEService;
+import org.apache.iotdb.db.zcy.service.ScanInfo;
+import org.apache.thrift.TException;
+import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
 
-    public ServiceImpl() {
-        this.message = new TSInfo(0, 0, 0, 0);
-    }
+import java.util.HashMap;
+
+public class ServiceImpl implements PipeCtoEService.Iface{
+
     @Override
-    public void sendData(TSInfo data) {
-        // 实现 sendData 方法的逻辑
-        try {
-            System.out.println("Sending data: " + data);
-            message.setSize(data.getSize());
-            message.setNum(data.getNum());
-            message.setMin(data.getMin());
-            message.setMax(data.getMax());
-        } catch (Exception e) {
-            System.err.println("Error sending data: " + e.getMessage());
-        }
+    public void PipeStart(String sql) throws TException {
+        Thread thread = new Thread(new ExcuteSqlRunnable(sql));//发送数据测试
+        thread.start();
+        PipeInfo pipeInfo = PipeInfo.getInstance();//设置pipe状态为启动
+        pipeInfo.setPipeStatus(true);
 
     }
+
     @Override
-    public TSInfo receiveData() {
-        // 实现 receiveData 方法的逻辑
-        try {
-            System.out.println("Received data: " + message);
-            return message;
-        } catch (Exception e) {
-            System.err.println("Error receiving data: " + e.getMessage());
-            return null;
-        }
+    public void AnsMessage(int EdgeFragmentId, int SourceId, int ReadOffset) throws TException {
+        PipeInfo pipeInfo=PipeInfo.getInstance();
+        pipeInfo.getScanStatus(SourceId).setEdgeFragmentId(EdgeFragmentId);
+        pipeInfo.getScanStatus(SourceId).setOffset(ReadOffset);
+        pipeInfo.getScanStatus(SourceId).setStatus(true);
+    }
+
+    @Override
+    public ScanInfo PipeClose() throws TException {
+        PipeInfo pipeInfo=PipeInfo.getInstance();
+        pipeInfo.closeAllScanStatus();
+        pipeInfo.setPipeStatus(false);
+        pipeInfo.clearAllScanStatus();
+        return null;
+    }
+
+}
+class ExcuteSqlRunnable implements Runnable {
+    private final String sql;
+    public ExcuteSqlRunnable(String sql){
+        this.sql=sql;
+    }
+    @Override
+    public void run() {
+
+        ClientRPCServiceImpl clientRPCService = new ClientRPCServiceImpl();
+        clientRPCService.excuteIdentitySql(sql);
     }
 }

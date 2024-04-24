@@ -19,11 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.*;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.plan.execution.PipeInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -33,12 +40,18 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class SeriesScanOperator extends AbstractDataSourceOperator {
 
   private final TsBlockBuilder builder;
   private boolean finished = false;
+  private int fragmentId;
+  private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
+          MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
+  private ISinkHandle sinkHandle;
 
   public SeriesScanOperator(
       OperatorContext context,
@@ -54,6 +67,48 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
         Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
   }
+  public SeriesScanOperator(
+          OperatorContext context,
+          PlanNodeId sourceId,
+          PartialPath seriesPath,
+          Ordering scanOrder,
+          SeriesScanOptions seriesScanOptions,
+          int fragmentId) {
+    this.sourceId = sourceId;
+    this.operatorContext = context;
+    this.seriesScanUtil =
+            new SeriesScanUtil(seriesPath, scanOrder, seriesScanOptions, context.getInstanceContext());
+    this.maxReturnSize =
+            Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+    this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
+    this.fragmentId=fragmentId;
+    final String queryId_r = "test_query_r_"+sourceId.getId();
+    final String queryId_s = "test_query_s_"+sourceId.getId();
+    final TEndPoint remoteEndpoint = new TEndPoint("localhost", 10740);
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId_r, PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getEdgeFragmentId(), "0");
+    final String remotePlanNodeId = "receive_test_"+sourceId.getId();
+    final String localPlanNodeId = "send_test_"+sourceId.getId();
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId_s, fragmentId, "0");
+    int channelNum = 1;
+    AtomicInteger cnt = new AtomicInteger(channelNum);
+    long query_num=1;
+    FragmentInstanceContext instanceContext = new FragmentInstanceContext(query_num);
+    DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
+    sinkHandle =
+            MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
+                    Collections.singletonList(
+                            new DownStreamChannelLocation(
+                                    remoteEndpoint,
+                                    remoteFragmentInstanceId,
+                                    remotePlanNodeId)),
+                    downStreamChannelIndex,
+                    ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+                    localFragmentInstanceId,
+                    localPlanNodeId,
+                    instanceContext);
+    PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).setSinkHandle(this.sinkHandle);
+    sinkHandle.tryOpenChannel(0);
+  }
 
   @Override
   public TsBlock next() throws Exception {
@@ -61,6 +116,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       return getResultFromRetainedTsBlock();
     }
     resultTsBlock = builder.build();
+    sinkHandle.send(resultTsBlock);//发送数据
     builder.reset();
     return checkTsBlockSizeAndGetResult();
   }
@@ -90,7 +146,10 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       } while (System.nanoTime() - start < maxRuntime && !builder.isFull());
 
       finished = builder.isEmpty();
-
+      if(finished){
+        sinkHandle.setNoMoreTsBlocksOfOneChannel(0);
+        sinkHandle.close();
+      }
       return !finished;
     } catch (IOException e) {
       throw new RuntimeException("Error happened while scanning the file", e);
