@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution;
 
-import org.apache.iotdb.db.zcy.service.CtoEService;
+
+import org.apache.iotdb.db.zcy.service.PipeEtoCService;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.server.THsHaServer;
@@ -41,7 +42,7 @@ public class ServerStart {
         //多线程非阻塞
         try{
             TNonblockingServerSocket transport =new TNonblockingServerSocket(9090);
-            CtoEService.Processor processor = new CtoEService.Processor(new ServiceImpl());
+            PipeEtoCService.Processor processor = new PipeEtoCService.Processor(new ServiceImpl());
             TBinaryProtocol.Factory protocolFactory = new TBinaryProtocol.Factory();
             TFramedTransport.Factory tTransport = new TFramedTransport.Factory();
 
@@ -51,7 +52,7 @@ public class ServerStart {
             targs.transportFactory(tTransport);
 
             TServer server = new THsHaServer(targs);
-            System.out.println("Starting the receiver server...");
+            System.out.println("Starting the edge server...");
             server.serve();
         }catch(Exception e){
             e.printStackTrace();

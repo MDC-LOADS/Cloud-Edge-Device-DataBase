@@ -135,6 +135,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.execution.PipeInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
@@ -304,13 +305,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 SeriesScanOperator.class.getSimpleName());
+    PipeInfo pipeInfo=PipeInfo.getInstance();//单例
+    int fragmentId=pipeInfo.getFragmentId();
     SeriesScanOperator seriesScanOperator =
         new SeriesScanOperator(
             operatorContext,
             node.getPlanNodeId(),
             seriesPath,
             node.getScanOrder(),
-            seriesScanOptionsBuilder.build());
+            seriesScanOptionsBuilder,
+            fragmentId);
+
+    pipeInfo.addScanSatus(Integer.parseInt(node.getPlanNodeId().getId()),fragmentId);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);

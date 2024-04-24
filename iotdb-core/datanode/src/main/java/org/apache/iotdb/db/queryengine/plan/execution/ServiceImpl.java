@@ -1,37 +1,49 @@
 package org.apache.iotdb.db.queryengine.plan.execution;
 
 
-import org.apache.iotdb.db.zcy.service.CtoEService;
-import org.apache.iotdb.db.zcy.service.TSInfo;
-public class ServiceImpl implements CtoEService.Iface{
-    private TSInfo message;
 
-    public ServiceImpl() {
-        this.message = new TSInfo(0, 0, 0, 0);
-    }
+import org.apache.iotdb.db.zcy.service.PipeCtoEService;
+import org.apache.iotdb.db.zcy.service.PipeEtoCService;
+
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.layered.TFramedTransport;
+
+public class ServiceImpl implements PipeEtoCService.Iface{
+
+
     @Override
-    public void sendData(TSInfo data) {
-        // 实现 sendData 方法的逻辑
-        try {
-            System.out.println("Sending data: " + data);
-            message.setSize(data.getSize());
-            message.setNum(data.getNum());
-            message.setMin(data.getMin());
-            message.setMax(data.getMax());
-        } catch (Exception e) {
-            System.err.println("Error sending data: " + e.getMessage());
+    public void AckMessage(int CloudFragmentId, int SourceId) throws TException {
+        PipeInfo pipeInfo=PipeInfo.getInstance();
+        pipeInfo.getScanStatus(SourceId).setCloudFragmentId(CloudFragmentId);
+        while(!pipeInfo.getScanStatus(SourceId).isSetOffset()){
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
 
-    }
-    @Override
-    public TSInfo receiveData() {
-        // 实现 receiveData 方法的逻辑
-        try {
-            System.out.println("Received data: " + message);
-            return message;
-        } catch (Exception e) {
-            System.err.println("Error receiving data: " + e.getMessage());
-            return null;
+
+        //多线程非阻塞版本
+        TTransport transport = null;
+        try  {
+            transport =  new TFramedTransport(new TSocket("localhost", 9091));
+            TProtocol protocol = new TBinaryProtocol(transport);
+            PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
+            transport.open();
+            // 调用服务方法
+            client.AnsMessage(pipeInfo.getScanStatus(SourceId).getEdgeFragmentId(),SourceId,pipeInfo.getScanStatus(SourceId).getOffset());
+            System.out.println("ansData:"+SourceId+" sent successfully.");
+        } catch (TException x) {
+            x.printStackTrace();
+        }finally {
+            if(null!=transport){
+                transport.close();
+            }
         }
     }
 }

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.db.queryengine.plan.execution.PipeInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -114,6 +115,7 @@ public class SeriesScanUtil {
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
+  private int ScanOperatorId ;
 
   public SeriesScanUtil(
       PartialPath seriesPath,
@@ -156,6 +158,49 @@ public class SeriesScanUtil {
             orderUtils.comparingLong(
                 versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
   }
+  public SeriesScanUtil(
+          PartialPath seriesPath,
+          Ordering scanOrder,
+          SeriesScanOptions scanOptions,
+          FragmentInstanceContext context,
+          int SourceId) {
+    this.seriesPath = seriesPath;
+    dataType = seriesPath.getSeriesType();
+
+    this.scanOptions = scanOptions;
+    paginationController = scanOptions.getPaginationController();
+
+    this.context = context;
+    this.ScanOperatorId=SourceId;
+
+    if (scanOrder.isAscending()) {
+      orderUtils = new AscTimeOrderUtils();
+      mergeReader = getPriorityMergeReader();
+    } else {
+      orderUtils = new DescTimeOrderUtils();
+      mergeReader = getDescPriorityMergeReader();
+    }
+
+    // init TimeSeriesMetadata materializer
+    seqTimeSeriesMetadata = new LinkedList<>();
+    unSeqTimeSeriesMetadata =
+            new PriorityQueue<>(
+                    orderUtils.comparingLong(
+                            timeSeriesMetadata -> orderUtils.getOrderTime(timeSeriesMetadata.getStatistics())));
+
+    // init ChunkMetadata materializer
+    cachedChunkMetadata =
+            new PriorityQueue<>(
+                    orderUtils.comparingLong(
+                            chunkMetadata -> orderUtils.getOrderTime(chunkMetadata.getStatistics())));
+
+    // init PageReader materializer
+    seqPageReaders = new LinkedList<>();
+    unSeqPageReaders =
+            new PriorityQueue<>(
+                    orderUtils.comparingLong(
+                            versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
+  }
 
   public void initQueryDataSource(QueryDataSource dataSource) {
     dataSource.fillOrderIndexes(seriesPath.getDevice(), orderUtils.getAscending());
@@ -178,6 +223,9 @@ public class SeriesScanUtil {
   }
 
   public boolean hasNextFile() throws IOException {
+    if(PipeInfo.getInstance().getScanStatus(ScanOperatorId).isSetOffset()){
+      return false;
+    }
     if (!paginationController.hasCurLimit()) {
       return false;
     }
@@ -284,7 +332,10 @@ public class SeriesScanUtil {
     } else if (firstTimeSeriesMetadata == null && cachedChunkMetadata.isEmpty()) {
       return false;
     }
-
+    if(firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile()) && PipeInfo.getInstance().getPipeStatus()){
+      PipeInfo.getInstance().getScanStatus(ScanOperatorId).setSetOffset(true);
+      return false;
+    }
     while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
       initFirstChunkMetadata();
       // filter chunk based on push-down conditions

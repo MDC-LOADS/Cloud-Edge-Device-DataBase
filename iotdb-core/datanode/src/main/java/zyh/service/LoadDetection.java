@@ -1,7 +1,6 @@
 package zyh.service;
 
-import org.apache.iotdb.db.zcy.service.CtoEService;
-import org.apache.iotdb.db.zcy.service.TSInfo;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -124,27 +123,27 @@ public class LoadDetection {
 
         double clouddatasize=0;
 //        多线程非阻塞版本
-        TTransport transport = null;
-        try  {
-        transport =  new TFramedTransport(new TSocket(address, port));
-        TProtocol protocol = new TBinaryProtocol(transport);
-        CtoEService.Client client = new CtoEService.Client(protocol);
-        transport.open();
-        // 调用服务方法
-        TSInfo dataToReceive = client.receiveData();
-        System.out.println("Data receive successfully.");
-        //获取云端数据大小
-        clouddatasize = dataToReceive.getSize();
-        return clouddatasize;
-
-        } catch (TException x) {
-        x.printStackTrace();
-        }finally {
-        if(null!=transport){
-            transport.close();
-        }
-        }
-        System.out.println("Data receive failed.");
+//        TTransport transport = null;
+//        try  {
+//        transport =  new TFramedTransport(new TSocket(address, port));
+//        TProtocol protocol = new TBinaryProtocol(transport);
+//        CtoEService.Client client = new CtoEService.Client(protocol);
+//        transport.open();
+//        // 调用服务方法
+//        TSInfo dataToReceive = client.receiveData();
+//        System.out.println("Data receive successfully.");
+//        //获取云端数据大小
+//        clouddatasize = dataToReceive.getSize();
+//        return clouddatasize;
+//
+//        } catch (TException x) {
+//        x.printStackTrace();
+//        }finally {
+//        if(null!=transport){
+//            transport.close();
+//        }
+//        }
+//        System.out.println("Data receive failed.");
         return clouddatasize;
 
     }

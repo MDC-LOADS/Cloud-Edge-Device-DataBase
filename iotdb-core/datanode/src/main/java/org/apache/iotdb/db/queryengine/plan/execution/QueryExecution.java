@@ -93,15 +93,9 @@ import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNod
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
 
-import org.apache.iotdb.db.zcy.service.CtoEService;
-import org.apache.iotdb.db.zcy.service.TSInfo;
 
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.TException;
-import org.apache.thrift.transport.layered.TFramedTransport;
+
+
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -306,6 +300,7 @@ public class QueryExecution implements IQueryExecution {
     if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
       stateMachine.transitionToFailed(analysis.getFailStatus());
     }
+//    PipeInfo.getInstance().printAllScanStatus();
   }
 
   private void checkTimeOutForQuery() {
@@ -849,11 +844,11 @@ public class QueryExecution implements IQueryExecution {
 //    server.start();
 //  }
 //}
-class ReceiveRunnable implements Runnable {
-  @Override
-  public void run() {
-    ReceiveTsBlock receive=new ReceiveTsBlock();
-    receive.receive();
-  }
-}
+//class ReceiveRunnable implements Runnable {
+//  @Override
+//  public void run() {
+//    ReceiveTsBlock receive=new ReceiveTsBlock();
+//    receive.receive();
+//  }
+//}
 

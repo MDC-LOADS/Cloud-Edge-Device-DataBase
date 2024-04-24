@@ -74,6 +74,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.PipeInfo;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -338,6 +339,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       t = error;
       throw error;
     } finally {
+      PipeInfo.getInstance().clearAllScanStatus();//查询结束清除表
       long currentOperationCost = System.nanoTime() - startTime;
       COORDINATOR.recordExecutionTime(queryId, currentOperationCost);
 
