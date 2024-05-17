@@ -9,6 +9,7 @@ public class PipeInfo {
     private boolean pipeStatus;//pipe的启动状态 0：关闭  1：启动
     private Map<Integer,ScanStatusInfo> scanStatusInfos;
     private int fragmentId;
+    private String sql;
 
 
     // 私有构造方法，避免外部实例化
@@ -57,5 +58,14 @@ public class PipeInfo {
 
     public void clearAllScanStatus(){
         this.scanStatusInfos=new HashMap<>();
+        sql=null;
+    }
+
+    public String getSql() {
+        return sql;
+    }
+
+    public void setSql(String sql) {
+        this.sql = sql;
     }
 }

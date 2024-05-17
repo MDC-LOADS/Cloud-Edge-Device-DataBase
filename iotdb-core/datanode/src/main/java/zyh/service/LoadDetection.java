@@ -1,6 +1,8 @@
 package zyh.service;
 
 
+import org.apache.iotdb.db.queryengine.plan.execution.PipeInfo;
+import org.apache.iotdb.db.zcy.service.PipeCtoEService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -194,7 +196,7 @@ public class LoadDetection {
     }
 
 
-    public static void main(String[] args) {
+    public  void start() {
         int port=9090;
         String address="localhost";
         double readSpeed=getDiskReadSpeed();
@@ -205,9 +207,45 @@ public class LoadDetection {
         double flag=performLoadDetection( localdataSize, clouddataSize,writeSpeed,readSpeed,BytesPerSecond);
 
         if (flag==0){
-        //从云端计算数据
+        //从云端计算数据 多线程非阻塞版本
+        TTransport transport = null;
+        try  {
+        transport =  new TFramedTransport(new TSocket(address, port));
+        TProtocol protocol = new TBinaryProtocol(transport);
+        PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
+        transport.open();
+        // 调用服务方法
+        client.PipeStart(PipeInfo.getInstance().getSql());
+        System.out.println("start successfully.");
+
+        } catch (TException x) {
+            x.printStackTrace();
+        }finally {
+            if(null!=transport){
+                transport.close();
+            }
+        }
         }else{
         //从本地计算数据
+            if(PipeInfo.getInstance().getPipeStatus()){
+                TTransport transport = null;
+                try  {
+                    transport =  new TFramedTransport(new TSocket(address, port));
+                    TProtocol protocol = new TBinaryProtocol(transport);
+                    PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
+                    transport.open();
+                    // 调用服务方法
+                    client.PipeClose();
+                    System.out.println("start successfully.");
+
+                } catch (TException x) {
+                    x.printStackTrace();
+                }finally {
+                    if(null!=transport){
+                        transport.close();
+                    }
+                }
+            }
         }
 
     }

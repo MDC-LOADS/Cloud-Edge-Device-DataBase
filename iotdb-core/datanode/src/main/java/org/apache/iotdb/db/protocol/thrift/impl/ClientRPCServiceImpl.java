@@ -265,6 +265,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     boolean finished = false;
     long queryId = Long.MIN_VALUE;
     String statement = req.getStatement();
+    PipeInfo pipeInfo=PipeInfo.getInstance();
+    pipeInfo.setSql(statement);//设置sql
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     // quota
     OperationQuota quota = null;

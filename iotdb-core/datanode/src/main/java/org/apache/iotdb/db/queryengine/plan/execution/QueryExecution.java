@@ -95,8 +95,6 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DIST
 
 
 
-
-
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
  * frame. It takes three main responsibilities: 1. Prepare a query. Transform a query from statement
@@ -153,7 +151,7 @@ public class QueryExecution implements IQueryExecution {
       QueryPlanCostMetricSet.getInstance();
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
-  public boolean ServerisOpen = false;//服务器开启标志
+  public static int flag_num =0;//服务器开启标志
 
   @SuppressWarnings("squid:S107")
   public QueryExecution(
@@ -266,6 +264,9 @@ public class QueryExecution implements IQueryExecution {
 //    }
 
 
+//          ReadFromCloudFlag readFromCloudFlag=ReadFromCloudFlag.getInstance();
+//          readFromCloudFlag.setFlag(true);
+
 
     if (skipExecute()) {
       logger.debug("[SkipExecute]");
@@ -277,7 +278,15 @@ public class QueryExecution implements IQueryExecution {
       }
       return;
     }
-
+//    if(flag_num == 1){
+//      SendData sendData = new SendData();
+//      sendData.send();
+//      flag_num=0;
+//    }else {
+//      flag_num++;
+//    }
+//    SendData sendData = new SendData();
+//    sendData.send();
     // check timeout for query first
     checkTimeOutForQuery();
     doLogicalPlan();
@@ -291,6 +300,9 @@ public class QueryExecution implements IQueryExecution {
       initResultHandle();
     }
     PERFORMANCE_OVERVIEW_METRICS.recordPlanCost(System.nanoTime() - startTime);
+//    ReceiveTsBlock receive=new ReceiveTsBlock();
+//    TsBlock reveiveTsBlock = receive.receive();
+
     schedule();
 
     // set partial insert error message
@@ -300,7 +312,6 @@ public class QueryExecution implements IQueryExecution {
     if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
       stateMachine.transitionToFailed(analysis.getFailStatus());
     }
-//    PipeInfo.getInstance().printAllScanStatus();
   }
 
   private void checkTimeOutForQuery() {

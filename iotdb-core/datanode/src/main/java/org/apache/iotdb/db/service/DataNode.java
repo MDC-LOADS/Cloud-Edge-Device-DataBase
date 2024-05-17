@@ -161,6 +161,8 @@ public class DataNode implements DataNodeMBean {
     //新建thrift服务器
     Thread serverThread = new Thread(new ServerRunnable());//启动服务器
     serverThread.start();
+    Thread IOMonitorThread = new Thread(new MonitorRunnable());//启动服务器
+    IOMonitorThread.start();
 
     new DataNodeServerCommandLine().doMain(args);
   }
@@ -966,6 +968,14 @@ class ServerRunnable implements Runnable {
   @Override
   public void run() {
     // 创建并启动服务器
+    ServerStart server = new ServerStart();
+    server.start();
+  }
+}
+class MonitorRunnable implements Runnable {
+  @Override
+  public void run() {
+    // 启动io监测线程
     ServerStart server = new ServerStart();
     server.start();
   }
