@@ -92,6 +92,7 @@ import org.apache.iotdb.udf.api.exception.UDFManagementException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import zyh.service.LoadDetection;
 
 import java.io.File;
 import java.io.IOException;
@@ -976,7 +977,15 @@ class MonitorRunnable implements Runnable {
   @Override
   public void run() {
     // 启动io监测线程
-    ServerStart server = new ServerStart();
-    server.start();
+    while(true){
+      LoadDetection monitor = new LoadDetection();
+      monitor.start();
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
   }
 }
