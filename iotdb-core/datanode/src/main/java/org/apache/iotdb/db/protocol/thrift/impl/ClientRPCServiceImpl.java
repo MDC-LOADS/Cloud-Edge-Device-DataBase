@@ -2742,26 +2742,22 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         }
 
         Column[] valueColumns = tsBlock.get().getValueColumns();
-        System.out.println("receive columns boolean:");
-//        for(Column valueColumn:valueColumns){
-//            System.out.println(valueColumn.getBooleans());
+//        System.out.println("receive columns boolean:");
+//        boolean[] booleanColumn=valueColumns[0].getBooleans();
+//        for(boolean booleanObject:booleanColumn){
+//          System.out.println(booleanObject);
 //        }
-//        System.out.println(valueColumns[0].getBooleans());
-        boolean[] booleanColumn=valueColumns[0].getBooleans();
-        for(boolean booleanObject:booleanColumn){
-          System.out.println(booleanObject);
-        }
-        System.out.println("receive columns binary:");
-        Binary[] binaryColumn=valueColumns[1].getBinaries();
-        for(Binary binaryObject:binaryColumn){
-          System.out.println(binaryObject);
-        }
-        TimeColumn timeColumn=tsBlock.get().getTimeColumn();
-        long[] times=timeColumn.getTimes();
-        System.out.println("receive time columns:");
-        for(long time:times){
-          System.out.println(time);
-        }
+//        System.out.println("receive columns binary:");
+//        Binary[] binaryColumn=valueColumns[0].getBinaries();
+//        for(Binary binaryObject:binaryColumn){
+//          System.out.println(binaryObject);
+//        }
+//        TimeColumn timeColumn=tsBlock.get().getTimeColumn();
+//        long[] times=timeColumn.getTimes();
+//        System.out.println("receive time columns:");
+//        for(long time:times){
+//          System.out.println(time);
+//        }
       }
 
     } catch (RuntimeException e) {

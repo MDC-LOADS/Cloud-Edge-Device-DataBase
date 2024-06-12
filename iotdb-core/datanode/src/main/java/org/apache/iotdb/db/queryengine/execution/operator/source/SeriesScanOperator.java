@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -82,13 +83,13 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
             Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
     this.fragmentId=fragmentId;
-    final String queryId_r = "test_query_r_"+sourceId.getId();
-    final String queryId_s = "test_query_s_"+sourceId.getId();
-    final TEndPoint remoteEndpoint = new TEndPoint("localhost", 10740);
-    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId_r, PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getEdgeFragmentId(), "0");
+    final String queryId = "test_query_"+sourceId.getId();
+//    final String queryId_s = "test_query_s_"+sourceId.getId();
+    final TEndPoint remoteEndpoint = new TEndPoint("localhost", 10744);
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getEdgeFragmentId(), "0");
     final String remotePlanNodeId = "receive_test_"+sourceId.getId();
     final String localPlanNodeId = "send_test_"+sourceId.getId();
-    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId_s, fragmentId, "0");
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, fragmentId, "0");
     int channelNum = 1;
     AtomicInteger cnt = new AtomicInteger(channelNum);
     long query_num=1;
@@ -107,7 +108,9 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
                     localPlanNodeId,
                     instanceContext);
     PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).setSinkHandle(this.sinkHandle);
-    sinkHandle.tryOpenChannel(0);
+    if(PipeInfo.getInstance().getPipeStatus()){
+      sinkHandle.tryOpenChannel(0);
+    }
   }
 
   @Override
@@ -116,7 +119,35 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       return getResultFromRetainedTsBlock();
     }
     resultTsBlock = builder.build();
-    sinkHandle.send(resultTsBlock);//发送数据
+    if(PipeInfo.getInstance().getPipeStatus()){
+//      Column[] valueColumns = resultTsBlock.getValueColumns();
+//      System.out.println("result columns binary:");
+//      Binary[] binaryColumn=valueColumns[0].getBinaries();
+//      for(Binary binaryObject:binaryColumn){
+//        System.out.println(binaryObject);
+//      }
+//      TimeColumn timeColumn=resultTsBlock.getTimeColumn();
+//      long[] times=timeColumn.getTimes();
+//      System.out.println("result time columns:");
+//      for(long time:times){
+//        System.out.println(time);
+//      }
+      System.out.println("localfragmentid:"+fragmentId);
+      System.out.println("remoteid:"+PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getEdgeFragmentId());
+      sinkHandle.send(resultTsBlock);//发送数据
+//      System.out.println("isNoMoreTs:"+ sinkHandle.getChannel(0).isNoMoreTsBlocks());
+
+//      sinkHandle.wait();
+      while(sinkHandle.getChannel(0).getNumOfBufferedTsBlocks()!=0){
+        try {
+                Thread.sleep(10);
+        //          System.out.println("waiting");
+              } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+              }
+      }
+
+    }
     builder.reset();
     return checkTsBlockSizeAndGetResult();
   }
@@ -146,9 +177,11 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       } while (System.nanoTime() - start < maxRuntime && !builder.isFull());
 
       finished = builder.isEmpty();
-      if(finished){
+      System.out.println("finished="+finished);
+      if(finished && PipeInfo.getInstance().getPipeStatus()){
         sinkHandle.setNoMoreTsBlocksOfOneChannel(0);
         sinkHandle.close();
+        System.out.println("close finished");
       }
       return !finished;
     } catch (IOException e) {
