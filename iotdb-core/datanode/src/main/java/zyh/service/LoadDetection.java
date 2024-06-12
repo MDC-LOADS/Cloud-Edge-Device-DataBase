@@ -23,10 +23,10 @@ public class LoadDetection {
 
         long readSpeed = 0;
         for (HWDiskStore diskStore : diskStores) {
-            System.out.println("Disk: " + diskStore.getName());
+//            System.out.println("Disk: " + diskStore.getName());
 
             for (HWPartition partition : diskStore.getPartitions()) {
-                System.out.println("Partition: " + partition.getMountPoint());
+//                System.out.println("Partition: " + partition.getMountPoint());
 
                 // 获取磁盘读写速度（总字节数）
                 long readBytes = diskStore.getReadBytes();
@@ -55,10 +55,10 @@ public class LoadDetection {
 
         long writeSpeed = 0;
         for (HWDiskStore diskStore : diskStores) {
-            System.out.println("Disk: " + diskStore.getName());
+//            System.out.println("Disk: " + diskStore.getName());
 
             for (HWPartition partition : diskStore.getPartitions()) {
-                System.out.println("Partition: " + partition.getMountPoint());
+//                System.out.println("Partition: " + partition.getMountPoint());
 
                 // 获取磁盘读写速度（总字节数）
                 long writeBytes = diskStore.getWriteBytes();
@@ -109,8 +109,8 @@ public class LoadDetection {
             sentBytesPerSecond = (currentBytesSent - prevBytesSent) / elapsedSeconds;
             receivedBytesPerSecond = (currentBytesRecv - prevBytesRecv) / elapsedSeconds;
 
-            System.out.println("Sent Bytes per Second: " + sentBytesPerSecond + " bytes/s");
-            System.out.println("Received Bytes per Second: " + receivedBytesPerSecond + " bytes/s");
+//            System.out.println("Sent Bytes per Second: " + sentBytesPerSecond + " bytes/s");
+//            System.out.println("Received Bytes per Second: " + receivedBytesPerSecond + " bytes/s");
 
             // 更新上一次的字节数和时间戳
 //            networkIF.setPrevBytesSent(networkIF.getBytesSent());
@@ -169,10 +169,10 @@ public class LoadDetection {
                 fileSizeInKB = fileSize / 1024.0;
                  fileSizeInMB = fileSizeInKB / 1024.0;
 
-                System.out.println("File size: " + fileSizeInKB + " KB");
-                System.out.println("File size: " + fileSizeInMB + " MB");
+//                System.out.println("File size: " + fileSizeInKB + " KB");
+//                System.out.println("File size: " + fileSizeInMB + " MB");
             } else {
-                System.out.println("File does not exist.");
+//                System.out.println("File does not exist.");
             }
         return fileSizeInMB;
     }
@@ -187,9 +187,9 @@ public class LoadDetection {
 
         // 根据负载情况判断从本地还是云端获取数据
         if (localTime > cloudTime) {
-            System.out.println("本地IO负载高，从云端获取数据。");
+//            System.out.println("本地IO负载高，从云端获取数据。");
         } else {
-            System.out.println("从本地获取数据。");
+//            System.out.println("从本地获取数据。");
             flag=1;
         }
         return flag;
@@ -206,47 +206,47 @@ public class LoadDetection {
         double clouddataSize=getclouddatasize(port,address);
         double flag=performLoadDetection( localdataSize, clouddataSize,writeSpeed,readSpeed,BytesPerSecond);
 
-        if (flag==0){
-        //从云端计算数据 多线程非阻塞版本
-        TTransport transport = null;
-        try  {
-        transport =  new TFramedTransport(new TSocket(address, port));
-        TProtocol protocol = new TBinaryProtocol(transport);
-        PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
-        transport.open();
-        // 调用服务方法
-        client.PipeStart(PipeInfo.getInstance().getSql());
-        System.out.println("start successfully.");
-
-        } catch (TException x) {
-            x.printStackTrace();
-        }finally {
-            if(null!=transport){
-                transport.close();
-            }
-        }
-        }else{
-        //从本地计算数据
-            if(PipeInfo.getInstance().getPipeStatus()){
-                TTransport transport = null;
-                try  {
-                    transport =  new TFramedTransport(new TSocket(address, port));
-                    TProtocol protocol = new TBinaryProtocol(transport);
-                    PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
-                    transport.open();
-                    // 调用服务方法
-                    client.PipeClose();
-                    System.out.println("start successfully.");
-
-                } catch (TException x) {
-                    x.printStackTrace();
-                }finally {
-                    if(null!=transport){
-                        transport.close();
-                    }
-                }
-            }
-        }
+//        if (flag==0){
+//        //从云端计算数据 多线程非阻塞版本
+//        TTransport transport = null;
+//        try  {
+//        transport =  new TFramedTransport(new TSocket(address, port));
+//        TProtocol protocol = new TBinaryProtocol(transport);
+//        PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
+//        transport.open();
+//        // 调用服务方法
+//        client.PipeStart(PipeInfo.getInstance().getSql());
+//        System.out.println("start successfully.");
+//
+//        } catch (TException x) {
+//            x.printStackTrace();
+//        }finally {
+//            if(null!=transport){
+//                transport.close();
+//            }
+//        }
+//        }else{
+//        //从本地计算数据
+//            if(PipeInfo.getInstance().getPipeStatus()){
+//                TTransport transport = null;
+//                try  {
+//                    transport =  new TFramedTransport(new TSocket(address, port));
+//                    TProtocol protocol = new TBinaryProtocol(transport);
+//                    PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
+//                    transport.open();
+//                    // 调用服务方法
+//                    client.PipeClose();
+//                    System.out.println("start successfully.");
+//
+//                } catch (TException x) {
+//                    x.printStackTrace();
+//                }finally {
+//                    if(null!=transport){
+//                        transport.close();
+//                    }
+//                }
+//            }
+//        }
 
     }
 }

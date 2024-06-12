@@ -307,6 +307,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 SeriesScanOperator.class.getSimpleName());
     PipeInfo pipeInfo=PipeInfo.getInstance();//单例
     int fragmentId=pipeInfo.getFragmentId();
+    pipeInfo.addScanSatus(Integer.parseInt(node.getPlanNodeId().getId()),fragmentId);
     SeriesScanOperator seriesScanOperator =
         new SeriesScanOperator(
             operatorContext,
@@ -316,7 +317,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             seriesScanOptionsBuilder,
             fragmentId);
 
-    pipeInfo.addScanSatus(Integer.parseInt(node.getPlanNodeId().getId()),fragmentId);
+
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);

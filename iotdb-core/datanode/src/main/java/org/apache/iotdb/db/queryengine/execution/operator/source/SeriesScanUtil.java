@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityM
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -332,12 +333,17 @@ public class SeriesScanUtil {
     } else if (firstTimeSeriesMetadata == null && cachedChunkMetadata.isEmpty()) {
       return false;
     }
+    System.out.println("sataus"+PipeInfo.getInstance().getPipeStatus());
     if(firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile()) && PipeInfo.getInstance().getPipeStatus()){
       PipeInfo.getInstance().getScanStatus(ScanOperatorId).setSetOffset(true);
+      System.out.println("offset:"+PipeInfo.getInstance().getScanStatus(ScanOperatorId).getOffset());
       return false;
     }
     while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
       initFirstChunkMetadata();
+      System.out.println("id"+ScanOperatorId);
+      System.out.println("first"+firstChunkMetadata);
+      System.out.println("size"+cachedChunkMetadata.size());
       // filter chunk based on push-down conditions
       filterFirstChunkMetadata();
     }

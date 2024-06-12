@@ -19,9 +19,11 @@ public class ServiceImpl implements PipeEtoCService.Iface{
     public void AckMessage(int CloudFragmentId, int SourceId) throws TException {
         PipeInfo pipeInfo=PipeInfo.getInstance();
         pipeInfo.getScanStatus(SourceId).setCloudFragmentId(CloudFragmentId);
+        System.out.println("CloudFragmentId:"+CloudFragmentId+"sourceid"+SourceId);
         while(!pipeInfo.getScanStatus(SourceId).isSetOffset()){
             try {
                 Thread.sleep(10);
+//                System.out.println("waiting");
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }

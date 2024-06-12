@@ -7,6 +7,7 @@ public class ScanStatusInfo{
     private boolean status=false;//是否传输数据
     private int offset=0;//算子偏移量
     private boolean setOffset=false;
+    private int oldFragmentId=0;
 
     ScanStatusInfo(int sourceId,int edgeFragmentId){
         this.edgeFragmentId=edgeFragmentId;
@@ -53,4 +54,6 @@ public class ScanStatusInfo{
         this.setOffset = setOffset;
     }
 
+    public void setOldFragmentId(int oldFragmentId){this.oldFragmentId=oldFragmentId;}
+    public int getOldFragmentId(){return oldFragmentId;}
 }

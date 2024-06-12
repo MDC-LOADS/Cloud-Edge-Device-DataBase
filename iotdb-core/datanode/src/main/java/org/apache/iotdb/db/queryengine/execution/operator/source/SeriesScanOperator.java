@@ -42,6 +42,16 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import org.apache.iotdb.db.queryengine.plan.execution.PipeInfo;
+import org.apache.iotdb.db.zcy.service.PipeCtoEService;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.layered.TFramedTransport;
+import org.checkerframework.checker.units.qual.C;
 
 public class SeriesScanOperator extends AbstractDataSourceOperator {
 
@@ -55,6 +65,8 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   private SeriesScanOptions.Builder seriesScanBuilder;
   private PartialPath seriesPath;
   private Ordering scanOrder;
+  private int testflag=0;
+  private int CloudFragmentId=0;
 
 
   public SeriesScanOperator(
@@ -90,23 +102,6 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
             Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
     this.fragmentId = fragmentId;
-    final String queryId_r = "test_query_r_"+sourceId.getId();
-    final String queryId_s = "test_query_s_"+sourceId.getId();
-    final TEndPoint remoteEndpoint = new TEndPoint("localhost", 10744);
-    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId_s, PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getCloudFragmentId(), "0");
-    final String localPlanNodeId = "receive_test_"+sourceId.getId();
-    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId_r, fragmentId, "0");
-    long query_num=1;
-    FragmentInstanceContext instanceContext = new FragmentInstanceContext(query_num);
-    this.sourceHandle =MPP_DATA_EXCHANGE_MANAGER.createSourceHandle(
-            localFragmentInstanceId,
-            localPlanNodeId,
-            0,//IndexOfUpstreamSinkHandle
-            remoteEndpoint,
-            remoteFragmentInstanceId,
-            instanceContext::failed);
-    final long MOCK_TSBLOCK_SIZE = 1024L * 1024L;
-    sourceHandle.setMaxBytesCanReserve(MOCK_TSBLOCK_SIZE);
 //    System.out.println("receiver start");
   }
 
@@ -116,12 +111,46 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       return getResultFromRetainedTsBlock();
     }
     PipeInfo pipeInfo=PipeInfo.getInstance();
-    if(pipeInfo.getPipeStatus() && pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).isStatus() && builder.isEmpty()){
+    System.out.println("----status:"+pipeInfo.getPipeStatus()+"---scanstatus:"+pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).isStatus());
+    if(pipeInfo.getPipeStatus() && pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).isStatus()){
       //pipe开启且当前scan算子pipe开启且builder内为空
-      ListenableFuture<?> isBlocked = sourceHandle.isBlocked();
-      while (!isBlocked.isDone()) {
+      System.out.println("---in---");
+      System.out.println("---localfragmentid:"+fragmentId);
+      System.out.println("remote:"+PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getCloudFragmentId());
+      String queryId = "test_query_"+sourceId.getId();
+      TEndPoint remoteEndpoint = new TEndPoint("localhost", 10740);
+      while (PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getCloudFragmentId()==PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getOldFragmentId() && PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).isStatus()){
         try {
           Thread.sleep(10);
+//          System.out.println("waiting");
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
+      if(CloudFragmentId!=PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getCloudFragmentId()){
+        CloudFragmentId=PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getCloudFragmentId();
+        TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getCloudFragmentId(), "0");
+        String localPlanNodeId = "receive_test_"+sourceId.getId();
+        TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, fragmentId, "0");
+        long query_num=1;
+        FragmentInstanceContext instanceContext = new FragmentInstanceContext(query_num);
+        System.out.println("cloudid:"+PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getCloudFragmentId());
+        this.sourceHandle =MPP_DATA_EXCHANGE_MANAGER.createSourceHandle(
+                      localFragmentInstanceId,
+                      localPlanNodeId,
+                      0,//IndexOfUpstreamSinkHandle
+                      remoteEndpoint,
+                      remoteFragmentInstanceId,
+                      instanceContext::failed);
+        final long MOCK_TSBLOCK_SIZE = 1024L * 1024L;
+        sourceHandle.setMaxBytesCanReserve(MOCK_TSBLOCK_SIZE);
+      }
+
+      ListenableFuture<?> isBlocked = sourceHandle.isBlocked();
+      while (!isBlocked.isDone()&&!sourceHandle.isFinished()) {
+        try {
+          Thread.sleep(10);
+//          System.out.println("waiting");
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
@@ -129,6 +158,18 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       TsBlock tsBlock_rev = null;
       if (!sourceHandle.isFinished()) {
         tsBlock_rev = sourceHandle.receive();
+//        Column[] valueColumns = tsBlock_rev.getValueColumns();
+//        System.out.println("receive columns binary:");
+//        Binary[] binaryColumn=valueColumns[0].getBinaries();
+//        for(Binary binaryObject:binaryColumn){
+//          System.out.println(binaryObject);
+//        }
+//        TimeColumn timeColumn=tsBlock_rev.getTimeColumn();
+//        long[] times=timeColumn.getTimes();
+//        System.out.println("receive time columns:");
+//        for(long time:times){
+//          System.out.println(time);
+//        }
         appendToBuilder(tsBlock_rev);
       }else{
         //TODO:如果关闭了，需要重新启动scanUtil
@@ -136,6 +177,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
           //还在启动，说明是数据查没了
           finished=true;
           pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).setStatus(false);
+          sourceHandle=null;
           return tsBlock_rev;
         }else{
           //需要重新构建读取器
@@ -143,6 +185,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
           seriesScanUtil=new SeriesScanUtil(seriesPath, scanOrder, seriesScanBuilder.build(), operatorContext.getInstanceContext(),Integer.parseInt(sourceId.getId()));
           pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).setStatus(false);
           pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).setSetOffset(false);
+          sourceHandle=null;
           return tsBlock_rev;
         }
 
@@ -152,8 +195,11 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
     offset+=resultTsBlock.getPositionCount();//当前查询结果
 
 
-    if(pipeInfo.getPipeStatus()){//如果pipe开启就一直设置offset
-      pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).setOffset(offset);
+//    if(pipeInfo.getPipeStatus()){//如果pipe开启就一直设置offset
+    pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).setOffset(offset);
+//    }
+    if(pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).isSetOffset()){
+      System.out.println("offset:"+pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).getOffset());
     }
 //    System.out.println("offset:"+offset);
     builder.reset();
@@ -163,11 +209,37 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   @SuppressWarnings("squid:S112")
   @Override
   public boolean hasNext() throws Exception {
+    System.out.println("----hasNext()----");
     if (retainedTsBlock != null) {
       return true;
     }
+    if(testflag==0){
+      PipeInfo.getInstance().setPipeStatus(true);
+      TTransport transport = null;
+      try  {
+        transport =  new TFramedTransport(new TSocket("localhost", 9091));
+        TProtocol protocol = new TBinaryProtocol(transport);
+        PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
+        transport.open();
+        // 调用服务方法
+        client.PipeStart(PipeInfo.getInstance().getSql());
+        System.out.println("start successfully.");
+
+      } catch (TException x) {
+        x.printStackTrace();
+      }finally {
+        if(null!=transport){
+          transport.close();
+        }
+      }
+      testflag=1;
+    }
     if(PipeInfo.getInstance().getPipeStatus() && PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).isStatus()){
-      finished=false;//如果已经打开通道开始传输数据了，返回还有数据
+      if(sourceHandle!=null&&sourceHandle.isFinished()){
+        finished=true;
+      }else{
+        finished=false;//如果已经打开通道开始传输数据了，返回还有数据
+      }
       return !finished;
     }else{
       try {
@@ -188,13 +260,22 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
           if (!readPageData() && !readChunkData() && !readFileData()) {
             if(PipeInfo.getInstance().getPipeStatus() && PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).isSetOffset()){
               PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).setStatus(true);
+              PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).setOldFragmentId(CloudFragmentId);
+              System.out.println("set"+sourceId.getId()+"true");
             }
             break;
           }
         } while (System.nanoTime() - start < maxRuntime && !builder.isFull());
 
         finished = builder.isEmpty();
-
+        if(PipeInfo.getInstance().getPipeStatus() && PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).isStatus()) {
+          if(sourceHandle!=null&&sourceHandle.isFinished()){
+            finished=true;
+          }else{
+            finished=false;//如果已经打开通道开始传输数据了，返回还有数据
+          }
+          return !finished;
+        }
         return !finished;
       } catch (IOException e) {
         throw new RuntimeException("Error happened while scanning the file", e);

@@ -69,6 +69,7 @@ import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.schedule.DriverScheduler;
+import org.apache.iotdb.db.queryengine.plan.execution.PipeInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.ServerStart;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
@@ -103,6 +104,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import org.apache.iotdb.db.queryengine.plan.execution.PipeInfo;
+import org.apache.iotdb.db.zcy.service.PipeCtoEService;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.layered.TFramedTransport;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
 
@@ -971,21 +980,22 @@ class ServerRunnable implements Runnable {
     // 创建并启动服务器
     ServerStart server = new ServerStart();
     server.start();
+//    PipeInfo pipeInfo=new PipeInfo();
   }
 }
 class MonitorRunnable implements Runnable {
   @Override
   public void run() {
     // 启动io监测线程
-    while(true){
-      LoadDetection monitor = new LoadDetection();
-      monitor.start();
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-    }
+//    while(true){
+//      LoadDetection monitor = new LoadDetection();
+//      monitor.start();
+//      try {
+//        Thread.sleep(100);
+//      } catch (InterruptedException e) {
+//        throw new RuntimeException(e);
+//      }
+//    }
 
   }
 }

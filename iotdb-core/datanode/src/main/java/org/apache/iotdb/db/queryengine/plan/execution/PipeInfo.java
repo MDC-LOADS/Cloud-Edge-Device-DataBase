@@ -3,7 +3,7 @@ package org.apache.iotdb.db.queryengine.plan.execution;
 import java.util.Map;
 import java.util.HashMap;
 public class PipeInfo {
-    private static PipeInfo instance;
+    private static final PipeInfo instance=new PipeInfo();
 
     // 声明单例对象需要修改的属性
     private boolean pipeStatus;//pipe的启动状态 0：关闭  1：启动
@@ -21,10 +21,6 @@ public class PipeInfo {
 
     // 提供获取实例的静态方法，使用 synchronized 关键字保证线程安全
     public static synchronized PipeInfo getInstance() {
-        // 如果实例为空，则创建新实例
-        if (instance == null) {
-            instance = new PipeInfo();
-        }
         return instance;
     }
 
@@ -57,7 +53,7 @@ public class PipeInfo {
     }
 
     public void clearAllScanStatus(){
-        this.scanStatusInfos=new HashMap<>();
+//        this.scanStatusInfos=new HashMap<>();
         sql=null;
     }
 
