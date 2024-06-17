@@ -138,14 +138,14 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
 //      System.out.println("isNoMoreTs:"+ sinkHandle.getChannel(0).isNoMoreTsBlocks());
 
 //      sinkHandle.wait();
-      while(sinkHandle.getChannel(0).getNumOfBufferedTsBlocks()!=0){
-        try {
-                Thread.sleep(10);
-        //          System.out.println("waiting");
-              } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-              }
-      }
+//      while(sinkHandle.getChannel(0).getNumOfBufferedTsBlocks()!=0){
+//        try {
+//                Thread.sleep(10);
+//        //          System.out.println("waiting");
+//              } catch (InterruptedException e) {
+//                throw new RuntimeException(e);
+//              }
+//      }
 
     }
     builder.reset();
@@ -179,10 +179,20 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       finished = builder.isEmpty();
       System.out.println("finished="+finished);
       if(finished && PipeInfo.getInstance().getPipeStatus()){
+        while(sinkHandle.getChannel(0).getNumOfBufferedTsBlocks()!=0){
+          try {
+            Thread.sleep(10);
+            //          System.out.println("waiting");
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+        }
         sinkHandle.setNoMoreTsBlocksOfOneChannel(0);
         sinkHandle.close();
         System.out.println("close finished");
+
       }
+
       return !finished;
     } catch (IOException e) {
       throw new RuntimeException("Error happened while scanning the file", e);

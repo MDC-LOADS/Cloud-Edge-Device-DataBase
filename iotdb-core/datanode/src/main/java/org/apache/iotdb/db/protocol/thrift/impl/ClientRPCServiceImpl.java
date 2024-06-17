@@ -2740,8 +2740,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           break;
         }
-
-        Column[] valueColumns = tsBlock.get().getValueColumns();
+//
+//        Column[] valueColumns = tsBlock.get().getValueColumns();
 //        System.out.println("receive columns boolean:");
 //        boolean[] booleanColumn=valueColumns[0].getBooleans();
 //        for(boolean booleanObject:booleanColumn){
@@ -2764,7 +2764,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       throw new RuntimeException(e);
     }finally {
       COORDINATOR.cleanupQueryExecution(queryId, t);
-
+      PipeInfo.getInstance().setPipeStatus(false);
     }
   }
 }
