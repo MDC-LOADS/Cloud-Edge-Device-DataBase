@@ -2,11 +2,8 @@ package org.apache.iotdb.db.queryengine.plan.execution;
 
 
 import org.apache.iotdb.db.zcy.service.PipeCtoEService;
-import org.apache.iotdb.db.zcy.service.ScanInfo;
 import org.apache.thrift.TException;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
-
-import java.util.HashMap;
 
 public class ServiceImpl implements PipeCtoEService.Iface{
 
@@ -28,13 +25,23 @@ public class ServiceImpl implements PipeCtoEService.Iface{
     }
 
     @Override
-    public ScanInfo PipeClose() throws TException {
+    public void AnsAggreMessage(int EdgeFragmentId, int SourceId, long StartTime) throws TException {
+        PipeInfo pipeInfo=PipeInfo.getInstance();
+        pipeInfo.getScanStatus(SourceId).setEdgeFragmentId(EdgeFragmentId);
+        pipeInfo.getScanStatus(SourceId).setStartTime(StartTime);
+        pipeInfo.getScanStatus(SourceId).setStatus(true);
+
+    }
+
+
+    @Override
+    public void PipeClose() throws TException {
         PipeInfo pipeInfo=PipeInfo.getInstance();
         pipeInfo.closeAllScanStatus();
         pipeInfo.setPipeStatus(false);
         pipeInfo.clearAllScanStatus();
-        return null;
     }
+
 
 }
 class ExcuteSqlRunnable implements Runnable {
@@ -47,5 +54,6 @@ class ExcuteSqlRunnable implements Runnable {
 
         ClientRPCServiceImpl clientRPCService = new ClientRPCServiceImpl();
         clientRPCService.excuteIdentitySql(sql);
+        System.out.println("start sql!!!!!!!!!!!!");
     }
 }

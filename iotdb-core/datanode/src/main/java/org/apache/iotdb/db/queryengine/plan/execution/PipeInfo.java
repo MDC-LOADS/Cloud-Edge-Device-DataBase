@@ -11,12 +11,15 @@ public class PipeInfo {
     private Map<Integer,ScanStatusInfo> scanStatusInfos;
     private int fragmentId;
 
+    private boolean aggregationStatus;
+
 
     // 私有构造方法，避免外部实例化
     private PipeInfo() {
         this.pipeStatus=false;
         this.scanStatusInfos=new HashMap<>();
         this.fragmentId=1000;
+        this.aggregationStatus=false;
     }
 
     // 提供获取实例的静态方法，使用 synchronized 关键字保证线程安全
@@ -32,10 +35,16 @@ public class PipeInfo {
         ScanStatusInfo scanStatusInfo = new ScanStatusInfo(sourceId, cloudFragmentId);
         scanStatusInfos.put(sourceId, scanStatusInfo);
     }
+    public void setAggregationStatus(boolean status){
+        this.aggregationStatus=status;
+    }
 
     // 获取单例对象的值
     public boolean getPipeStatus(){
         return  pipeStatus;
+    }
+    public boolean getAggregationStatus(){
+        return aggregationStatus;
     }
 
     public ScanStatusInfo getScanStatus(int sourceId){

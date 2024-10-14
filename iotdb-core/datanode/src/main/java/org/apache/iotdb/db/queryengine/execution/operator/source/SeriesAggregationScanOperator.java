@@ -42,24 +42,50 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
 
   @SuppressWarnings("squid:S107")
   public SeriesAggregationScanOperator(
-      PlanNodeId sourceId,
-      PartialPath seriesPath,
-      Ordering scanOrder,
-      SeriesScanOptions scanOptions,
-      OperatorContext context,
-      List<Aggregator> aggregators,
-      ITimeRangeIterator timeRangeIterator,
-      GroupByTimeParameter groupByTimeParameter,
-      long maxReturnSize) {
+          PlanNodeId sourceId,
+          PartialPath seriesPath,
+          Ordering scanOrder,
+          SeriesScanOptions scanOptions,
+          OperatorContext context,
+          List<Aggregator> aggregators,
+          ITimeRangeIterator timeRangeIterator,
+          GroupByTimeParameter groupByTimeParameter,
+          long maxReturnSize) {
     super(
-        sourceId,
-        context,
-        new SeriesScanUtil(seriesPath, scanOrder, scanOptions, context.getInstanceContext()),
-        1,
-        aggregators,
-        timeRangeIterator,
-        scanOrder.isAscending(),
-        groupByTimeParameter,
-        maxReturnSize);
+            sourceId,
+            context,
+            new SeriesScanUtil(seriesPath, scanOrder, scanOptions, context.getInstanceContext()),
+            1,
+            aggregators,
+            timeRangeIterator,
+            scanOrder.isAscending(),
+            groupByTimeParameter,
+            maxReturnSize);
   }
+
+  public SeriesAggregationScanOperator(
+          PlanNodeId sourceId,
+          PartialPath seriesPath,
+          Ordering scanOrder,
+          SeriesScanOptions scanOptions,
+          OperatorContext context,
+          List<Aggregator> aggregators,
+          ITimeRangeIterator timeRangeIterator,
+          GroupByTimeParameter groupByTimeParameter,
+          long maxReturnSize,
+          int fragmentId
+  ) {
+    super(
+            sourceId,
+            context,
+            new SeriesScanUtil(seriesPath, scanOrder, scanOptions, context.getInstanceContext()),
+            1,
+            aggregators,
+            timeRangeIterator,
+            scanOrder.isAscending(),
+            groupByTimeParameter,
+            maxReturnSize,
+            fragmentId);
+  }
+
 }

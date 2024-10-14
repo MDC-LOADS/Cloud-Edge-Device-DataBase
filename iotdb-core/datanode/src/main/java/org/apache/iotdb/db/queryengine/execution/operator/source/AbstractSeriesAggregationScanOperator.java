@@ -19,11 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.plan.execution.PipeInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -35,12 +45,17 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateAggregationFromRawData;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
+
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public abstract class AbstractSeriesAggregationScanOperator extends AbstractDataSourceOperator {
 
@@ -69,17 +84,22 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   /** Time slice for one next call in total, shared by the inner methods of the next() method */
   private long leftRuntimeOfOneNextCall;
 
+  private int fragmentId;
+  private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
+          MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
+  private ISinkHandle sinkHandle;
+
   @SuppressWarnings("squid:S107")
   protected AbstractSeriesAggregationScanOperator(
-      PlanNodeId sourceId,
-      OperatorContext context,
-      SeriesScanUtil seriesScanUtil,
-      int subSensorSize,
-      List<Aggregator> aggregators,
-      ITimeRangeIterator timeRangeIterator,
-      boolean ascending,
-      GroupByTimeParameter groupByTimeParameter,
-      long maxReturnSize) {
+          PlanNodeId sourceId,
+          OperatorContext context,
+          SeriesScanUtil seriesScanUtil,
+          int subSensorSize,
+          List<Aggregator> aggregators,
+          ITimeRangeIterator timeRangeIterator,
+          boolean ascending,
+          GroupByTimeParameter groupByTimeParameter,
+          long maxReturnSize) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.ascending = ascending;
@@ -96,8 +116,70 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
 
     this.cachedRawDataSize =
-        (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+            (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.maxReturnSize = maxReturnSize;
+  }
+
+  protected AbstractSeriesAggregationScanOperator(
+          PlanNodeId sourceId,
+          OperatorContext context,
+          SeriesScanUtil seriesScanUtil,
+          int subSensorSize,
+          List<Aggregator> aggregators,
+          ITimeRangeIterator timeRangeIterator,
+          boolean ascending,
+          GroupByTimeParameter groupByTimeParameter,
+          long maxReturnSize,
+          int fragmentId) {
+    this.sourceId = sourceId;
+    this.operatorContext = context;
+    this.ascending = ascending;
+    this.isGroupByQuery = groupByTimeParameter != null;
+    this.seriesScanUtil = seriesScanUtil;
+    this.subSensorSize = subSensorSize;
+    this.aggregators = aggregators;
+    this.timeRangeIterator = timeRangeIterator;
+
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (Aggregator aggregator : aggregators) {
+      dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
+    }
+    this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
+
+    this.cachedRawDataSize =
+            (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    this.maxReturnSize = maxReturnSize;
+
+    this.fragmentId=fragmentId;
+    final String queryId = "test_query_"+sourceId.getId();
+//    final String queryId_s = "test_query_s_"+sourceId.getId();
+    final TEndPoint remoteEndpoint = new TEndPoint("localhost", 10744);
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getEdgeFragmentId(), "0");
+    final String remotePlanNodeId = "receive_test_"+sourceId.getId();
+    final String localPlanNodeId = "send_test_"+sourceId.getId();
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, fragmentId, "0");
+    int channelNum = 1;
+    AtomicInteger cnt = new AtomicInteger(channelNum);
+    long query_num=1;
+    FragmentInstanceContext instanceContext = new FragmentInstanceContext(query_num);
+    DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
+    sinkHandle =
+            MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
+                    Collections.singletonList(
+                            new DownStreamChannelLocation(
+                                    remoteEndpoint,
+                                    remoteFragmentInstanceId,
+                                    remotePlanNodeId)),
+                    downStreamChannelIndex,
+                    ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+                    localFragmentInstanceId,
+                    localPlanNodeId,
+                    instanceContext);
+    PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).setSinkHandle(this.sinkHandle);
+    System.out.println("sink");
+    if(PipeInfo.getInstance().getPipeStatus()){
+      sinkHandle.tryOpenChannel(0);
+    }
   }
 
   @Override
@@ -117,6 +199,20 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   @Override
   public boolean hasNext() throws Exception {
+    if(curTimeRange == null && !timeRangeIterator.hasNextTimeRange() && PipeInfo.getInstance().getPipeStatus()){
+      while(sinkHandle.getChannel(0).getNumOfBufferedTsBlocks()!=0){
+        try {
+          Thread.sleep(10);//时间
+          //          System.out.println("waiting");
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
+      sinkHandle.setNoMoreTsBlocksOfOneChannel(0);
+      sinkHandle.close();
+//        System.out.println("close finished");
+
+    }
     return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
   }
 
@@ -128,8 +224,8 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     long maxRuntime = leftRuntimeOfOneNextCall;
 
     while (System.nanoTime() - start < maxRuntime
-        && (curTimeRange != null || timeRangeIterator.hasNextTimeRange())
-        && !resultTsBlockBuilder.isFull()) {
+            && (curTimeRange != null || timeRangeIterator.hasNextTimeRange())
+            && !resultTsBlockBuilder.isFull()) {
       if (curTimeRange == null) {
         // move to the next time window
         curTimeRange = timeRangeIterator.nextTimeRange();
@@ -148,6 +244,30 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
       TsBlock resultTsBlock = resultTsBlockBuilder.build();
+      if(PipeInfo.getInstance().getPipeStatus()){
+        if(!sinkHandle.isAborted()){
+          try {
+            Thread.sleep(2);
+            //          System.out.println("waiting");
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+          sinkHandle.send(resultTsBlock);//发送数据
+          System.out.println("send");
+          Column[] valueColumns = resultTsBlock.getValueColumns();
+          System.out.println("receive columns binary:");
+          float[] floatColumn=valueColumns[0].getFloats();
+          for(float floatObject:floatColumn){
+            System.out.println(floatObject);
+          }
+          TimeColumn timeColumn=resultTsBlock.getTimeColumn();
+          long[] times=timeColumn.getTimes();
+          System.out.println("receive time columns:");
+          for(long time:times){
+            System.out.println(time);
+          }
+        }
+      }
       resultTsBlockBuilder.reset();
       return resultTsBlock;
     } else {
@@ -185,8 +305,8 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
       // only when all the page and chunk data has been consumed, we need to read the file data
       if (!seriesScanUtil.hasNextPage()
-          && !seriesScanUtil.hasNextChunk()
-          && readAndCalcFromFile()) {
+              && !seriesScanUtil.hasNextChunk()
+              && readAndCalcFromFile()) {
         updateResultTsBlock();
         return true;
       }
@@ -194,8 +314,8 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
       // If the TimeRange is (Long.MIN_VALUE, Long.MAX_VALUE), for Aggregators like countAggregator,
       // we have to consume all the data before we finish the aggregation calculation.
       if (seriesScanUtil.hasNextPage()
-          || seriesScanUtil.hasNextChunk()
-          || seriesScanUtil.hasNextFile()) {
+              || seriesScanUtil.hasNextChunk()
+              || seriesScanUtil.hasNextFile()) {
         return false;
       }
       updateResultTsBlock();
@@ -207,7 +327,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   protected void updateResultTsBlock() {
     appendAggregationResult(
-        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
+            resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
   }
 
   protected boolean calcFromCachedData() {
@@ -216,7 +336,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   private boolean calcFromRawData(TsBlock tsBlock) {
     Pair<Boolean, TsBlock> calcResult =
-        calculateAggregationFromRawData(tsBlock, aggregators, curTimeRange, ascending);
+            calculateAggregationFromRawData(tsBlock, aggregators, curTimeRange, ascending);
     inputTsBlock = calcResult.getRight();
     return calcResult.getLeft();
   }
@@ -247,7 +367,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
         }
         // calc from fileMetaData
         if (curTimeRange.contains(
-            fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
+                fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
           Statistics[] statisticsList = new Statistics[subSensorSize];
           for (int i = 0; i < subSensorSize; i++) {
             statisticsList[i] = seriesScanUtil.currentFileStatistics(i);
@@ -288,7 +408,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
         }
         // calc from chunkMetaData
         if (curTimeRange.contains(
-            chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
+                chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
           // calc from chunkMetaData
           Statistics[] statisticsList = new Statistics[subSensorSize];
           for (int i = 0; i < subSensorSize; i++) {
@@ -331,7 +451,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
           }
           // can use pageHeader
           if (curTimeRange.contains(
-              pageTimeStatistics.getStartTime(), pageTimeStatistics.getEndTime())) {
+                  pageTimeStatistics.getStartTime(), pageTimeStatistics.getEndTime())) {
             Statistics[] statisticsList = new Statistics[subSensorSize];
             for (int i = 0; i < subSensorSize; i++) {
               statisticsList[i] = seriesScanUtil.currentPageStatistics(i);
@@ -367,16 +487,16 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   protected boolean canUseCurrentFileStatistics() throws IOException {
     Statistics fileStatistics = seriesScanUtil.currentFileTimeStatistics();
     return !seriesScanUtil.isFileOverlapped()
-        && fileStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
-        && !seriesScanUtil.currentFileModified();
+            && fileStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
+            && !seriesScanUtil.currentFileModified();
   }
 
   @SuppressWarnings({"squid:S3740"})
   protected boolean canUseCurrentChunkStatistics() throws IOException {
     Statistics chunkStatistics = seriesScanUtil.currentChunkTimeStatistics();
     return !seriesScanUtil.isChunkOverlapped()
-        && chunkStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
-        && !seriesScanUtil.currentChunkModified();
+            && chunkStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
+            && !seriesScanUtil.currentChunkModified();
   }
 
   @SuppressWarnings({"squid:S3740"})
@@ -386,7 +506,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
       return false;
     }
     return !seriesScanUtil.isPageOverlapped()
-        && currentPageStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
-        && !seriesScanUtil.currentPageModified();
+            && currentPageStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
+            && !seriesScanUtil.currentPageModified();
   }
 }

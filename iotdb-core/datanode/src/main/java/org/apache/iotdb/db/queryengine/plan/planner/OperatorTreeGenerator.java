@@ -417,35 +417,56 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitSeriesAggregationScan(
-      SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
+          SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
     PartialPath seriesPath = node.getSeriesPath();
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
     List<Aggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
-        o ->
-            aggregators.add(
-                new Aggregator(
-                    AccumulatorFactory.createAccumulator(
-                        o.getAggregationType(),
-                        node.getSeriesPath().getSeriesType(),
-                        o.getInputExpressions(),
-                        o.getInputAttributes(),
-                        ascending),
-                    o.getStep())));
-
-    GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
+            o ->
+                    aggregators.add(
+                            new Aggregator(
+                                    AccumulatorFactory.createAccumulator(
+                                            o.getAggregationType(),
+                                            node.getSeriesPath().getSeriesType(),
+                                            o.getInputExpressions(),
+                                            o.getInputAttributes(),
+                                            ascending),
+                                    o.getStep())));
+    PipeInfo pipeInfo=PipeInfo.getInstance();
+    int fragmentId=pipeInfo.getFragmentId();
+    int sourceId=Integer.parseInt(node.getPlanNodeId().getId());
+    GroupByTimeParameter groupByTimeParameterWithOffset;
+    pipeInfo.addScanSatus(sourceId,fragmentId);//添加到表
+    if(pipeInfo.getPipeStatus()){
+      ackSend(fragmentId,sourceId);
+      while(!pipeInfo.getScanStatus(sourceId).getStatus()){//跳出说明接收到修改信号
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
+      groupByTimeParameterWithOffset = node.getGroupByTimeParameter();
+      if(pipeInfo.getScanStatus(sourceId).getStartTime()!=0) {
+        groupByTimeParameterWithOffset.setStartTime(pipeInfo.getScanStatus(sourceId).getStartTime());
+        //修改偏移量
+      }
+    }else{
+      groupByTimeParameterWithOffset = node.getGroupByTimeParameter();
+    }
+    GroupByTimeParameter groupByTimeParameter = groupByTimeParameterWithOffset;
     ITimeRangeIterator timeRangeIterator =
-        initTimeRangeIterator(groupByTimeParameter, ascending, true);
+            initTimeRangeIterator(groupByTimeParameter, ascending, true);
     long maxReturnSize =
-        AggregationUtil.calculateMaxAggregationResultSize(
-            node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
+            AggregationUtil.calculateMaxAggregationResultSize(
+                    node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
     Filter timeFilter = node.getTimeFilter();
     Filter valueFilter = node.getValueFilter();
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(
-        context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
+            context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
     if (timeFilter != null) {
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
     }
@@ -454,23 +475,25 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
 
     OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                SeriesAggregationScanOperator.class.getSimpleName());
+            context
+                    .getDriverContext()
+                    .addOperatorContext(
+                            context.getNextOperatorId(),
+                            node.getPlanNodeId(),
+                            SeriesAggregationScanOperator.class.getSimpleName());
+
     SeriesAggregationScanOperator aggregateScanOperator =
-        new SeriesAggregationScanOperator(
-            node.getPlanNodeId(),
-            seriesPath,
-            node.getScanOrder(),
-            scanOptionsBuilder.build(),
-            operatorContext,
-            aggregators,
-            timeRangeIterator,
-            node.getGroupByTimeParameter(),
-            maxReturnSize);
+            new SeriesAggregationScanOperator(
+                    node.getPlanNodeId(),
+                    seriesPath,
+                    node.getScanOrder(),
+                    scanOptionsBuilder.build(),
+                    operatorContext,
+                    aggregators,
+                    timeRangeIterator,
+                    node.getGroupByTimeParameter(),
+                    maxReturnSize,
+                    fragmentId);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggregateScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);

@@ -11,6 +11,8 @@ public class ScanStatusInfo{
     private int offset=0;//算子偏移量
     private ISinkHandle sinkHandle;
 
+    private long startTime=0;//起始时间
+
     ScanStatusInfo(int sourceId,int cloudFragmentId){
         this.cloudFragmentId=cloudFragmentId;
         this.sourceId=sourceId;
@@ -47,6 +49,8 @@ public class ScanStatusInfo{
     public int getOffset() {
         return offset;
     }
+    public void setStartTime(long time){this.startTime=time;}
+    public long getStartTime(){return startTime;}
 
     public ISinkHandle getSinkHandle() {
         return sinkHandle;
