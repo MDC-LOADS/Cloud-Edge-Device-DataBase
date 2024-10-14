@@ -40,26 +40,49 @@ import java.util.List;
  */
 public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScanOperator {
 
+  public SeriesAggregationScanOperator(
+          PlanNodeId sourceId,
+          PartialPath seriesPath,
+          Ordering scanOrder,
+          SeriesScanOptions scanOptions,
+          OperatorContext context,
+          List<Aggregator> aggregators,
+          ITimeRangeIterator timeRangeIterator,
+          GroupByTimeParameter groupByTimeParameter,
+          long maxReturnSize) {
+    super(
+            sourceId,
+            context,
+            new SeriesScanUtil(seriesPath, scanOrder, scanOptions, context.getInstanceContext()),
+            1,
+            aggregators,
+            timeRangeIterator,
+            scanOrder.isAscending(),
+            groupByTimeParameter,
+            maxReturnSize);
+  }
   @SuppressWarnings("squid:S107")
   public SeriesAggregationScanOperator(
-      PlanNodeId sourceId,
-      PartialPath seriesPath,
-      Ordering scanOrder,
-      SeriesScanOptions scanOptions,
-      OperatorContext context,
-      List<Aggregator> aggregators,
-      ITimeRangeIterator timeRangeIterator,
-      GroupByTimeParameter groupByTimeParameter,
-      long maxReturnSize) {
+          PlanNodeId sourceId,
+          PartialPath seriesPath,
+          Ordering scanOrder,
+          SeriesScanOptions scanOptions,
+          OperatorContext context,
+          List<Aggregator> aggregators,
+          ITimeRangeIterator timeRangeIterator,
+          GroupByTimeParameter groupByTimeParameter,
+          long maxReturnSize,
+          int fragmentId) {
     super(
-        sourceId,
-        context,
-        new SeriesScanUtil(seriesPath, scanOrder, scanOptions, context.getInstanceContext()),
-        1,
-        aggregators,
-        timeRangeIterator,
-        scanOrder.isAscending(),
-        groupByTimeParameter,
-        maxReturnSize);
+            sourceId,
+            context,
+            new SeriesScanUtil(seriesPath, scanOrder, scanOptions, context.getInstanceContext()),
+            1,
+            aggregators,
+            timeRangeIterator,
+            scanOrder.isAscending(),
+            groupByTimeParameter,
+            maxReturnSize,
+            fragmentId);
   }
 }

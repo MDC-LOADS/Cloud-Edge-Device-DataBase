@@ -7,7 +7,10 @@ public class ScanStatusInfo{
     private boolean status=false;//是否传输数据
     private int offset=0;//算子偏移量
     private boolean setOffset=false;
+    private boolean setStartTime=false;
     private int oldFragmentId=0;
+
+    private long startTime=0;//起始时间
 
     ScanStatusInfo(int sourceId,int edgeFragmentId){
         this.edgeFragmentId=edgeFragmentId;
@@ -56,4 +59,15 @@ public class ScanStatusInfo{
 
     public void setOldFragmentId(int oldFragmentId){this.oldFragmentId=oldFragmentId;}
     public int getOldFragmentId(){return oldFragmentId;}
+
+    public void setStartTime(long time){this.startTime=time;}
+
+    public long getStartTime(){return startTime;}
+
+    public boolean isSetStartTime() {
+        return setStartTime;
+    }
+    public void setSetStartTime(boolean setStartTime) {
+        this.setStartTime = setStartTime;
+    }
 }

@@ -12,9 +12,6 @@ import org.apache.thrift.transport.layered.TFramedTransport;
 import oshi.SystemInfo;
 import oshi.hardware.HWDiskStore;
 import oshi.hardware.HWPartition;
-import oshi.hardware.NetworkIF;
-import java.io.File;
-
 
 public class LoadDetection {
     private static double getDiskReadSpeed() {
@@ -23,10 +20,10 @@ public class LoadDetection {
 
         long readSpeed = 0;
         for (HWDiskStore diskStore : diskStores) {
-//            System.out.println("Disk: " + diskStore.getName());
+            System.out.println("Disk: " + diskStore.getName());
 
             for (HWPartition partition : diskStore.getPartitions()) {
-//                System.out.println("Partition: " + partition.getMountPoint());
+                System.out.println("Partition: " + partition.getMountPoint());
 
                 // 获取磁盘读写速度（总字节数）
                 long readBytes = diskStore.getReadBytes();
@@ -55,10 +52,10 @@ public class LoadDetection {
 
         long writeSpeed = 0;
         for (HWDiskStore diskStore : diskStores) {
-//            System.out.println("Disk: " + diskStore.getName());
+            System.out.println("Disk: " + diskStore.getName());
 
             for (HWPartition partition : diskStore.getPartitions()) {
-//                System.out.println("Partition: " + partition.getMountPoint());
+                System.out.println("Partition: " + partition.getMountPoint());
 
                 // 获取磁盘读写速度（总字节数）
                 long writeBytes = diskStore.getWriteBytes();
@@ -80,175 +77,124 @@ public class LoadDetection {
         return writeSpeed;
     }
 
-    private static double estimateDataTransferTime(double dataSize, double bandwidth) {
-        // 根据数据大小和带宽估计传输时间
-        return dataSize / bandwidth;
-    }
-
-    public static double getnetworkBandwidth() {
-        SystemInfo systemInfo = new SystemInfo();
-        NetworkIF[] networkIFs = systemInfo.getHardware().getNetworkIFs().toArray(new NetworkIF[0]);
-
-        double sentBytesPerSecond = 0;
-        double receivedBytesPerSecond = 0;
-        for (NetworkIF networkIF : networkIFs) {
-
-            // 获取先前的字节数
-            long prevBytesSent = networkIF.getBytesSent();
-            long prevBytesRecv = networkIF.getBytesRecv();
-
-            // 更新网络接口信息
-            networkIF.updateAttributes();
-
-            // 获取当前的字节数
-            long currentBytesSent = networkIF.getBytesSent();
-            long currentBytesRecv = networkIF.getBytesRecv();
-
-            // 计算网络带宽（假设每毫秒获取一次）
-            double elapsedSeconds = (System.currentTimeMillis() - networkIF.getTimeStamp()) / 1.0;
-            sentBytesPerSecond = (currentBytesSent - prevBytesSent) / elapsedSeconds;
-            receivedBytesPerSecond = (currentBytesRecv - prevBytesRecv) / elapsedSeconds;
-
-//            System.out.println("Sent Bytes per Second: " + sentBytesPerSecond + " bytes/s");
-//            System.out.println("Received Bytes per Second: " + receivedBytesPerSecond + " bytes/s");
-
-            // 更新上一次的字节数和时间戳
-//            networkIF.setPrevBytesSent(networkIF.getBytesSent());
-//            networkIF.setPrevBytesRecv(networkIF.getBytesRecv());
-//            networkIF.setTimeStamp(System.currentTimeMillis());
-
-        }
-        return sentBytesPerSecond + receivedBytesPerSecond;
-    }
-
-    private static double getclouddatasize(int port, String address){
-
-        double clouddatasize=0;
-//        多线程非阻塞版本
-//        TTransport transport = null;
-//        try  {
-//        transport =  new TFramedTransport(new TSocket(address, port));
-//        TProtocol protocol = new TBinaryProtocol(transport);
-//        CtoEService.Client client = new CtoEService.Client(protocol);
-//        transport.open();
-//        // 调用服务方法
-//        TSInfo dataToReceive = client.receiveData();
-//        System.out.println("Data receive successfully.");
-//        //获取云端数据大小
-//        clouddatasize = dataToReceive.getSize();
-//        return clouddatasize;
-//
-//        } catch (TException x) {
-//        x.printStackTrace();
-//        }finally {
-//        if(null!=transport){
-//            transport.close();
-//        }
-//        }
-//        System.out.println("Data receive failed.");
-        return clouddatasize;
-
-    }
-
-    private static double getlocaldatasize(int port, String address){
-            double fileSizeInMB = 0;
-            double fileSizeInKB;
-
-            // 定义目标文件路径
-            String filePath = address;
-
-            // 创建File对象
-            File file = new File(filePath);
-
-            // 检查文件是否存在
-            if (file.exists()) {
-                // 获取文件大小（以字节为单位）
-                long fileSize = file.length();
-
-                // 打印文件大小
-                fileSizeInKB = fileSize / 1024.0;
-                 fileSizeInMB = fileSizeInKB / 1024.0;
-
-//                System.out.println("File size: " + fileSizeInKB + " KB");
-//                System.out.println("File size: " + fileSizeInMB + " MB");
-            } else {
-//                System.out.println("File does not exist.");
-            }
-        return fileSizeInMB;
+    private static double estimateDataTransferTime(double Currentrate, double Maxrate) {
+        // 根据当前读取速率和最大传输速率
+        return Currentrate / Maxrate;
     }
 
 
-    public static double performLoadDetection(double localdataSize, double clouddataSize, double writeSpeed, double readspeed, double BytesPerSecond) {
-        // 计算本地和云端的预计数据传输时间
+    public static double performLoadDetection( double writeSpeed, double readspeed,double maxrate,double threshold) {
+        // 计算本地和云端的预计数据速率
         double flag=0;
-        double localTime = estimateDataTransferTime(localdataSize, writeSpeed) +
-                estimateDataTransferTime(localdataSize, readspeed);
-        double cloudTime = estimateDataTransferTime(clouddataSize, BytesPerSecond) ;
-
+        double currentrate=writeSpeed+readspeed;
+        double rateThreshold=estimateDataTransferTime(currentrate,maxrate);
         // 根据负载情况判断从本地还是云端获取数据
-        if (localTime > cloudTime) {
-//            System.out.println("本地IO负载高，从云端获取数据。");
+        if (rateThreshold < threshold) {
+            System.out.println("本地IO负载高，从云端获取数据。");
         } else {
-//            System.out.println("从本地获取数据。");
+            System.out.println("从本地获取数据。");
             flag=1;
         }
         return flag;
     }
 
-
-    public  void start() {
-        int port=9090;
-        String address="localhost";
+    public static void monitor() {
+        double maxrate=2e10;
+        double threshold=0.5;
         double readSpeed=getDiskReadSpeed();
         double writeSpeed=getDiskWriteSpeed();
-        double BytesPerSecond=getnetworkBandwidth();
-        double localdataSize=getlocaldatasize(port,address);
-        double clouddataSize=getclouddatasize(port,address);
-        double flag=performLoadDetection( localdataSize, clouddataSize,writeSpeed,readSpeed,BytesPerSecond);
+        double flag=performLoadDetection( writeSpeed,readSpeed,maxrate,threshold);
 
-//        if (flag==0){
-//        //从云端计算数据 多线程非阻塞版本
-//        TTransport transport = null;
-//        try  {
-//        transport =  new TFramedTransport(new TSocket(address, port));
-//        TProtocol protocol = new TBinaryProtocol(transport);
-//        PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
-//        transport.open();
-//        // 调用服务方法
-//        client.PipeStart(PipeInfo.getInstance().getSql());
-//        System.out.println("start successfully.");
-//
-//        } catch (TException x) {
-//            x.printStackTrace();
-//        }finally {
-//            if(null!=transport){
-//                transport.close();
-//            }
-//        }
-//        }else{
-//        //从本地计算数据
-//            if(PipeInfo.getInstance().getPipeStatus()){
-//                TTransport transport = null;
-//                try  {
-//                    transport =  new TFramedTransport(new TSocket(address, port));
-//                    TProtocol protocol = new TBinaryProtocol(transport);
-//                    PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
-//                    transport.open();
-//                    // 调用服务方法
-//                    client.PipeClose();
-//                    System.out.println("start successfully.");
-//
-//                } catch (TException x) {
-//                    x.printStackTrace();
-//                }finally {
-//                    if(null!=transport){
-//                        transport.close();
-//                    }
-//                }
-//            }
-//        }
+        if (flag==0){
+            //从云端计算数据
+            PipeInfo.getInstance().setPipeStatus(true);
+            TTransport transport = null;
+            try  {
+                transport =  new TFramedTransport(new TSocket("localhost", 9091));
+                TProtocol protocol = new TBinaryProtocol(transport);
+                PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
+                transport.open();
+                // 调用服务方法
+                client.PipeStart(PipeInfo.getInstance().getSql());
+                System.out.println("start successfully.");
+
+            } catch (TException x) {
+                x.printStackTrace();
+            }finally {
+                if(null!=transport){
+                    transport.close();
+                }
+            }
+            System.out.println("pipe start");
+        }else{
+            //从本地计算数据
+            PipeInfo.getInstance().setPipeStatus(false);
+            TTransport transport = null;
+            try  {
+                transport =  new TFramedTransport(new TSocket("localhost", 9091));
+                TProtocol protocol = new TBinaryProtocol(transport);
+                PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
+                transport.open();
+                // 调用服务方法
+                client.PipeClose();
+                System.out.println("stop successfully.");
+
+            } catch (TException x) {
+                x.printStackTrace();
+            }finally {
+                if(null!=transport){
+                    transport.close();
+                }
+            }
+            System.out.println("pipe stop");
+        }
 
     }
+    public void PipeStop(){
+        PipeInfo.getInstance().setPipeStatus(false);
+        TTransport transport = null;
+        try  {
+            transport =  new TFramedTransport(new TSocket("localhost", 9091));
+            TProtocol protocol = new TBinaryProtocol(transport);
+            PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
+            transport.open();
+            // 调用服务方法
+            client.PipeClose();
+            System.out.println("stop successfully.");
+
+        } catch (TException x) {
+            x.printStackTrace();
+        }finally {
+            if(null!=transport){
+                transport.close();
+            }
+        }
+        System.out.println("pipe stop");
+    }
+    public void PipeStart(){
+        PipeInfo.getInstance().setPipeStatus(true);
+        TTransport transport = null;
+        try  {
+            transport =  new TFramedTransport(new TSocket("localhost", 9091));
+            TProtocol protocol = new TBinaryProtocol(transport);
+            PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
+            transport.open();
+            // 调用服务方法
+            client.PipeStart(PipeInfo.getInstance().getSql());
+            System.out.println("start successfully.");
+
+        } catch (TException x) {
+            x.printStackTrace();
+        }finally {
+            if(null!=transport){
+                transport.close();
+            }
+        }
+        System.out.println("pipe start");
+    }
 }
+
+
+
 
 

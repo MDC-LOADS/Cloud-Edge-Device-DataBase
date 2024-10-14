@@ -2,9 +2,8 @@ package org.apache.iotdb.db.queryengine.plan.execution;
 
 
 
-import org.apache.iotdb.db.zcy.service.PipeCtoEService;
 import org.apache.iotdb.db.zcy.service.PipeEtoCService;
-
+import org.apache.iotdb.db.zcy.service.PipeCtoEService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -20,10 +19,10 @@ public class ServiceImpl implements PipeEtoCService.Iface{
         PipeInfo pipeInfo=PipeInfo.getInstance();
         pipeInfo.getScanStatus(SourceId).setCloudFragmentId(CloudFragmentId);
         System.out.println("CloudFragmentId:"+CloudFragmentId+"sourceid"+SourceId);
-        while(!pipeInfo.getScanStatus(SourceId).isSetOffset()){
+        while((!pipeInfo.getScanStatus(SourceId).isSetOffset()) && (!pipeInfo.getScanStatus(SourceId).isSetStartTime())){
             try {
-                Thread.sleep(10);
-//                System.out.println("waiting");
+                Thread.sleep(10);//时间
+                System.out.println("waiting"+pipeInfo.getScanStatus(SourceId).isSetStartTime());
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -48,4 +47,5 @@ public class ServiceImpl implements PipeEtoCService.Iface{
             }
         }
     }
+
 }
