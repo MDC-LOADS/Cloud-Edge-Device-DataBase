@@ -42,16 +42,14 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.db.queryengine.plan.execution.PipeInfo;
-import org.apache.iotdb.db.zcy.service.PipeCtoEService;
-import org.apache.iotdb.tsfile.utils.Binary;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.layered.TFramedTransport;
-import org.checkerframework.checker.units.qual.C;
+import org.apache.iotdb.db.zcy.service.PipeCtoEService;
 
 public class SeriesScanOperator extends AbstractDataSourceOperator {
 
@@ -70,17 +68,17 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
 
 
   public SeriesScanOperator(
-      OperatorContext context,
-      PlanNodeId sourceId,
-      PartialPath seriesPath,
-      Ordering scanOrder,
-      SeriesScanOptions seriesScanOptions) {
+          OperatorContext context,
+          PlanNodeId sourceId,
+          PartialPath seriesPath,
+          Ordering scanOrder,
+          SeriesScanOptions seriesScanOptions) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.seriesScanUtil =
-        new SeriesScanUtil(seriesPath, scanOrder, seriesScanOptions, context.getInstanceContext(),Integer.parseInt(sourceId.getId()));
+            new SeriesScanUtil(seriesPath, scanOrder, seriesScanOptions, context.getInstanceContext(),Integer.parseInt(sourceId.getId()));
     this.maxReturnSize =
-        Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+            Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
   }
   public SeriesScanOperator(
@@ -111,17 +109,17 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       return getResultFromRetainedTsBlock();
     }
     PipeInfo pipeInfo=PipeInfo.getInstance();
-    System.out.println("----status:"+pipeInfo.getPipeStatus()+"---scanstatus:"+pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).isStatus());
+//    System.out.println("----status:"+pipeInfo.getPipeStatus()+"---scanstatus:"+pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).isStatus());
     if(pipeInfo.getPipeStatus() && pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).isStatus()){
       //pipe开启且当前scan算子pipe开启且builder内为空
-      System.out.println("---in---");
-      System.out.println("---localfragmentid:"+fragmentId);
-      System.out.println("remote:"+PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getCloudFragmentId());
+//      System.out.println("---in---");
+//      System.out.println("---localfragmentid:"+fragmentId);
+//      System.out.println("remote:"+PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getCloudFragmentId());
       String queryId = "test_query_"+sourceId.getId();
       TEndPoint remoteEndpoint = new TEndPoint("localhost", 10740);
       while (PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getCloudFragmentId()==PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getOldFragmentId() && PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).isStatus()){
         try {
-          Thread.sleep(10);
+          Thread.sleep(10);//时间
 //          System.out.println("waiting");
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
@@ -134,14 +132,14 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
         TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, fragmentId, "0");
         long query_num=1;
         FragmentInstanceContext instanceContext = new FragmentInstanceContext(query_num);
-        System.out.println("cloudid:"+PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getCloudFragmentId());
+//        System.out.println("cloudid:"+PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getCloudFragmentId());
         this.sourceHandle =MPP_DATA_EXCHANGE_MANAGER.createSourceHandle(
-                      localFragmentInstanceId,
-                      localPlanNodeId,
-                      0,//IndexOfUpstreamSinkHandle
-                      remoteEndpoint,
-                      remoteFragmentInstanceId,
-                      instanceContext::failed);
+                localFragmentInstanceId,
+                localPlanNodeId,
+                0,//IndexOfUpstreamSinkHandle
+                remoteEndpoint,
+                remoteFragmentInstanceId,
+                instanceContext::failed);
         final long MOCK_TSBLOCK_SIZE = 1024L * 1024L;
         sourceHandle.setMaxBytesCanReserve(MOCK_TSBLOCK_SIZE);
       }
@@ -149,7 +147,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       ListenableFuture<?> isBlocked = sourceHandle.isBlocked();
       while (!isBlocked.isDone()&&!sourceHandle.isFinished()) {
         try {
-          Thread.sleep(10);
+          Thread.sleep(10);//时间
 //          System.out.println("waiting");
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
@@ -194,13 +192,24 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
     resultTsBlock = builder.build();
     offset+=resultTsBlock.getPositionCount();//当前查询结果
 
-
-//    if(pipeInfo.getPipeStatus()){//如果pipe开启就一直设置offset
-    pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).setOffset(offset);
-//    }
-    if(pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).isSetOffset()){
-      System.out.println("offset:"+pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).getOffset());
+//      Column[] valueColumns = resultTsBlock.getValueColumns();
+//      System.out.println("result columns binary:");
+//      Binary[] binaryColumn=valueColumns[0].getBinaries();
+//      for(Binary binaryObject:binaryColumn){
+//        System.out.println(binaryObject);
+//      }
+//      TimeColumn timeColumn=resultTsBlock.getTimeColumn();
+//      long[] times=timeColumn.getTimes();
+//      System.out.println("result time columns:");
+//      for(long time:times){
+//        System.out.println(time);
+//      }
+    if(pipeInfo.getPipeStatus()){//如果pipe开启就一直设置offset
+        pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).setOffset(offset);
     }
+//    if(pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).isSetOffset()){
+//      System.out.println("offset:"+pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).getOffset());
+//    }
 //    System.out.println("offset:"+offset);
     builder.reset();
     return checkTsBlockSizeAndGetResult();
@@ -209,31 +218,31 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   @SuppressWarnings("squid:S112")
   @Override
   public boolean hasNext() throws Exception {
-    System.out.println("----hasNext()----");
+//    System.out.println("----hasNext()----");
     if (retainedTsBlock != null) {
       return true;
     }
-    if(testflag==0){
-      PipeInfo.getInstance().setPipeStatus(true);
-      TTransport transport = null;
-      try  {
-        transport =  new TFramedTransport(new TSocket("localhost", 9091));
-        TProtocol protocol = new TBinaryProtocol(transport);
-        PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
-        transport.open();
-        // 调用服务方法
-        client.PipeStart(PipeInfo.getInstance().getSql());
-        System.out.println("start successfully.");
-
-      } catch (TException x) {
-        x.printStackTrace();
-      }finally {
-        if(null!=transport){
-          transport.close();
-        }
-      }
-      testflag=1;
-    }
+//    if(testflag==0){
+//      PipeInfo.getInstance().setPipeStatus(true);
+//      TTransport transport = null;
+//      try  {
+//        transport =  new TFramedTransport(new TSocket("localhost", 9091));
+//        TProtocol protocol = new TBinaryProtocol(transport);
+//        PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
+//        transport.open();
+//        // 调用服务方法
+//        client.PipeStart(PipeInfo.getInstance().getSql());
+////        System.out.println("start successfully.");
+//
+//      } catch (TException x) {
+//        x.printStackTrace();
+//      }finally {
+//        if(null!=transport){
+//          transport.close();
+//        }
+//      }
+//      testflag=1;
+//    }
     if(PipeInfo.getInstance().getPipeStatus() && PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).isStatus()){
       if(sourceHandle!=null&&sourceHandle.isFinished()){
         finished=true;
@@ -261,7 +270,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
             if(PipeInfo.getInstance().getPipeStatus() && PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).isSetOffset()){
               PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).setStatus(true);
               PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).setOldFragmentId(CloudFragmentId);
-              System.out.println("set"+sourceId.getId()+"true");
+//              System.out.println("set"+sourceId.getId()+"true");
             }
             break;
           }
@@ -335,6 +344,9 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   private void appendToBuilder(TsBlock tsBlock) {
+    if(tsBlock==null){
+      return;
+    }
     TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
     TimeColumn timeColumn = tsBlock.getTimeColumn();
     ColumnBuilder columnBuilder = builder.getColumnBuilder(0);

@@ -163,8 +163,8 @@ public class DataNode implements DataNodeMBean {
 //    System.out.println("ok");
     Thread serverThread = new Thread(new ServerRunnable());//启动服务器
     serverThread.start();
-//    Thread IOMonitorThread = new Thread(new MonitorRunnable());//启动服务器
-//    IOMonitorThread.start();
+    Thread IOMonitorThread = new Thread(new MonitorRunnable());//启动服务器
+    IOMonitorThread.start();
 
     new DataNodeServerCommandLine().doMain(args);
   }
@@ -988,7 +988,7 @@ class MonitorRunnable implements Runnable {
 //        throw new RuntimeException(e);
 //      }
 //    }
-    pipe.PipeStart();
+//    pipe.PipeStart();
 //    for(int i=2;i>0;i--)
 //    {
 //      try {
@@ -999,24 +999,24 @@ class MonitorRunnable implements Runnable {
 //      }
 //    }
 
-    try {
-      Thread.sleep(3000);//时间
-      System.out.println("waiting stop");
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
-
-    pipe.PipeStop();
-    // 启动io监测线程
-//    while(true){
-//      LoadDetection monitor = new LoadDetection();
-//      monitor.monitor();
-//      try {
-//        Thread.sleep(100);
-//      } catch (InterruptedException e) {
-//        throw new RuntimeException(e);
-//      }
+//    try {
+//      Thread.sleep(3000);//时间
+//      System.out.println("waiting stop");
+//    } catch (InterruptedException e) {
+//      throw new RuntimeException(e);
 //    }
+
+//    pipe.PipeStop();
+    // 启动io监测线程
+    while(true){
+      LoadDetection monitor = new LoadDetection();
+      monitor.monitor();
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
 
   }
 }
