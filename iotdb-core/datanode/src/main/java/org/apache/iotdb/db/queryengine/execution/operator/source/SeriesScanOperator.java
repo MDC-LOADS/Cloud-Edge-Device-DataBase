@@ -83,32 +83,33 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
             Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
     this.fragmentId=fragmentId;
-    final String queryId = "test_query_"+sourceId.getId();
-//    final String queryId_s = "test_query_s_"+sourceId.getId();
-    final TEndPoint remoteEndpoint = new TEndPoint("localhost", 10744);
-    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getEdgeFragmentId(), "0");
-    final String remotePlanNodeId = "receive_test_"+sourceId.getId();
-    final String localPlanNodeId = "send_test_"+sourceId.getId();
-    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, fragmentId, "0");
-    int channelNum = 1;
-    AtomicInteger cnt = new AtomicInteger(channelNum);
-    long query_num=1;
-    FragmentInstanceContext instanceContext = new FragmentInstanceContext(query_num);
-    DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
-    sinkHandle =
-            MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
-                    Collections.singletonList(
-                            new DownStreamChannelLocation(
-                                    remoteEndpoint,
-                                    remoteFragmentInstanceId,
-                                    remotePlanNodeId)),
-                    downStreamChannelIndex,
-                    ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
-                    localFragmentInstanceId,
-                    localPlanNodeId,
-                    instanceContext);
-    PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).setSinkHandle(this.sinkHandle);
+
     if(PipeInfo.getInstance().getPipeStatus()){
+      final String queryId = "test_query_"+sourceId.getId();
+                                               //    final String queryId_s = "test_query_s_"+sourceId.getId();
+      final TEndPoint remoteEndpoint = new TEndPoint("localhost", 10744);
+      final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getEdgeFragmentId(), "0");
+      final String remotePlanNodeId = "receive_test_"+sourceId.getId();
+      final String localPlanNodeId = "send_test_"+sourceId.getId();
+      final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, fragmentId, "0");
+      int channelNum = 1;
+      AtomicInteger cnt = new AtomicInteger(channelNum);
+      long query_num=1;
+      FragmentInstanceContext instanceContext = new FragmentInstanceContext(query_num);
+      DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
+      sinkHandle =
+              MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
+                      Collections.singletonList(
+                              new DownStreamChannelLocation(
+                                      remoteEndpoint,
+                                      remoteFragmentInstanceId,
+                                      remotePlanNodeId)),
+                                      downStreamChannelIndex,
+                                      ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+                                      localFragmentInstanceId,
+                                      localPlanNodeId,
+                                      instanceContext);
+      PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).setSinkHandle(this.sinkHandle);
       sinkHandle.tryOpenChannel(0);
     }
   }
