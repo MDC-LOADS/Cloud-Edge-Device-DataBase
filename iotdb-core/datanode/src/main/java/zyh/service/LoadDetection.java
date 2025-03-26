@@ -90,9 +90,9 @@ public class LoadDetection {
         double rateThreshold=estimateDataTransferTime(currentrate,maxrate);
         // 根据负载情况判断从本地还是云端获取数据
         if (rateThreshold < threshold) {
-            System.out.println("本地IO负载高，从云端获取数据。");
+            System.out.println("本地IO负载高，从云端获取数据");
         } else {
-            System.out.println("从本地获取数据。");
+            System.out.println("从本地获取数据");
             flag=1;
         }
         return flag;
@@ -104,50 +104,52 @@ public class LoadDetection {
         double readSpeed=getDiskReadSpeed();
         double writeSpeed=getDiskWriteSpeed();
         double flag=performLoadDetection( writeSpeed,readSpeed,maxrate,threshold);
+        if(PipeInfo.getInstance().getSql()!=null){
+            if (flag==0){
+                //从云端计算数据
+                PipeInfo.getInstance().setPipeStatus(true);
+                TTransport transport = null;
+                try  {
+                    transport =  new TFramedTransport(new TSocket("localhost", 9091));
+                    TProtocol protocol = new TBinaryProtocol(transport);
+                    PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
+                    transport.open();
+                    // 调用服务方法
+                    client.PipeStart(PipeInfo.getInstance().getSql());
+                    System.out.println("start successfully.");
 
-        if (flag==0){
-            //从云端计算数据
-            PipeInfo.getInstance().setPipeStatus(true);
-            TTransport transport = null;
-            try  {
-                transport =  new TFramedTransport(new TSocket("localhost", 9091));
-                TProtocol protocol = new TBinaryProtocol(transport);
-                PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
-                transport.open();
-                // 调用服务方法
-                client.PipeStart(PipeInfo.getInstance().getSql());
-                System.out.println("start successfully.");
-
-            } catch (TException x) {
-                x.printStackTrace();
-            }finally {
-                if(null!=transport){
-                    transport.close();
+                } catch (TException x) {
+                    x.printStackTrace();
+                }finally {
+                    if(null!=transport){
+                        transport.close();
+                    }
                 }
-            }
-            System.out.println("pipe start");
-        }else{
-            //从本地计算数据
-            PipeInfo.getInstance().setPipeStatus(false);
-            TTransport transport = null;
-            try  {
-                transport =  new TFramedTransport(new TSocket("localhost", 9091));
-                TProtocol protocol = new TBinaryProtocol(transport);
-                PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
-                transport.open();
-                // 调用服务方法
-                client.PipeClose();
-                System.out.println("stop successfully.");
+                System.out.println("pipe start");
+            }else{
+                //从本地计算数据
+                PipeInfo.getInstance().setPipeStatus(false);
+                TTransport transport = null;
+                try  {
+                    transport =  new TFramedTransport(new TSocket("localhost", 9091));
+                    TProtocol protocol = new TBinaryProtocol(transport);
+                    PipeCtoEService.Client client = new PipeCtoEService.Client(protocol);
+                    transport.open();
+                    // 调用服务方法
+                    client.PipeClose();
+                    System.out.println("stop successfully.");
 
-            } catch (TException x) {
-                x.printStackTrace();
-            }finally {
-                if(null!=transport){
-                    transport.close();
+                } catch (TException x) {
+                    x.printStackTrace();
+                }finally {
+                    if(null!=transport){
+                        transport.close();
+                    }
                 }
+                System.out.println("pipe stop");
             }
-            System.out.println("pipe stop");
         }
+
 
     }
     public void PipeStop(){
