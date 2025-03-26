@@ -2,8 +2,9 @@
 [English](./README.md) | [中文](./README_ZH.md)
 
 # CED-DB
-
-
+[![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
+[![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
+![](https://img.shields.io/badge/java--language-1.8%20%7C%2011%20%7C%2017-blue.svg)
 
 # 简介
 CED-DB(Cloud-Edge-Device DataBase)是一款云边端协同时序数据库管理系统，可以为用户提供数据收集、存储和查询等任务。CED-DB由于可以实现云服务器、边缘设备和传感器的三端协同，因此可以在满足工业 IoT 领域中海量数据处理、存储和复杂数据查询分析的需求的同时，还可以将查询任务转移，分散边缘设备的查询压力。
