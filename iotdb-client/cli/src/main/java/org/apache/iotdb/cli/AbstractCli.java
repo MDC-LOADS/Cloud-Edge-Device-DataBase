@@ -100,7 +100,7 @@ public abstract class AbstractCli {
   static final String SET_FETCH_SIZE = "set fetch_size";
   static final String SHOW_FETCH_SIZE = "show fetch_size";
   private static final String HELP = "help";
-  static final String IOTDB_CLI_PREFIX = "IoTDB";
+  static final String IOTDB_CLI_PREFIX = "CED-DB";
   static final String SCRIPT_HINT = "./start-cli.sh(start-cli.bat if Windows)";
   static final String QUIT_COMMAND = "quit";
   static final String EXIT_COMMAND = "exit";
@@ -359,26 +359,34 @@ public abstract class AbstractCli {
 
   static void displayLogo(String logo, String version, String buildInfo) {
     println(
-        (logo != null
-                ? logo
-                : (" _____       _________  ______   ______    \n"
-                    + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
-                    + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
-                    + "  | | / .'`\\ \\  | |      | |  | | |  __'.  \n"
-                    + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
-                    + "|_____|'.__.' |_____|  |______.'|_______/  "))
-            + "version "
-            + version
-            + " (Build: "
-            + (buildInfo != null ? buildInfo : "UNKNOWN")
-            + ")"
-            + "\n"
-            + "                                           \n");
+            //        (logo != null
+//                ? logo
+//                : (" _____       _________  ______   ______    \n"
+//                    + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
+//                    + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
+//                    + "  | | / .'`\\ \\  | |      | |  | | |  __'.  \n"
+//                    + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n "
+//                    + "|_____|'.__.' |_____|  |______.'|_______/  "))
+            " _____   ______  _____    ______     ______    \n"
+                    + "/  ___|  |  ____||  __ \\  |_   _ `.  |_   _ \\    \n"
+                    + "|  |     | |__   | |  | |   | | `. \\  | |_) |    \n"
+                    + "|  |  _  |  __|  | |  | |   | |  | |  |  __'.    \n"
+                    + "\\  \\_| | | |____ | |__| |  _| |_.' / _| |__) |    \n"
+                    + " \\____/  |______||_____/  |______.' |_______/    \n"
+                    + "version "
+//            + version
+                    + "Edge"
+                    + " (Build: "
+                    + (buildInfo != null ? buildInfo : "Edge")
+                    + ")"
+                    + "\n"
+                    + "                                           \n");
+
   }
 
   static void echoStarting() {
     println("---------------------");
-    println("Starting IoTDB Cli");
+    println("Starting CED-DB Cli");
     println("---------------------");
   }
 
