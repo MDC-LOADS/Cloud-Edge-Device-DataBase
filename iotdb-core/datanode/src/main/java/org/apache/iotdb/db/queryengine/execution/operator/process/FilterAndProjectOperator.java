@@ -19,8 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.plan.execution.PipeInfo;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.CaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryColumnTransformer;
@@ -29,6 +38,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumn
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.MappableUDFColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.TernaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -42,7 +52,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class FilterAndProjectOperator implements ProcessOperator {
 
@@ -67,6 +79,11 @@ public class FilterAndProjectOperator implements ProcessOperator {
   // false when we only need to do projection
   private final boolean hasFilter;
 
+  private int fragmentId;
+  private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
+          MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
+  private ISinkHandle sinkHandle;
+
   @SuppressWarnings("squid:S107")
   public FilterAndProjectOperator(
       OperatorContext operatorContext,
@@ -90,7 +107,59 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.filterTsBlockBuilder = new TsBlockBuilder(8, filterOutputDataTypes);
     this.hasFilter = hasFilter;
   }
+  public FilterAndProjectOperator(
+          OperatorContext operatorContext,
+          Operator inputOperator,
+          List<TSDataType> filterOutputDataTypes,
+          List<LeafColumnTransformer> filterLeafColumnTransformerList,
+          ColumnTransformer filterOutputTransformer,
+          List<ColumnTransformer> commonTransformerList,
+          List<LeafColumnTransformer> projectLeafColumnTransformerList,
+          List<ColumnTransformer> projectOutputTransformerList,
+          boolean hasNonMappableUDF,
+          boolean hasFilter,
+          int sourceId,
+          int fragmentId) {
+    this.operatorContext = operatorContext;
+    this.inputOperator = inputOperator;
+    this.filterLeafColumnTransformerList = filterLeafColumnTransformerList;
+    this.filterOutputTransformer = filterOutputTransformer;
+    this.commonTransformerList = commonTransformerList;
+    this.projectLeafColumnTransformerList = projectLeafColumnTransformerList;
+    this.projectOutputTransformerList = projectOutputTransformerList;
+    this.hasNonMappableUDF = hasNonMappableUDF;
+    this.filterTsBlockBuilder = new TsBlockBuilder(8, filterOutputDataTypes);
+    this.hasFilter = hasFilter;
+    if(PipeInfo.getInstance().getPipeStatus() && PipeInfo.getInstance().isFilter()){
+      final String queryId = "test_query_"+sourceId;
+//    final String queryId_s = "test_query_s_"+sourceId.getId();
+      final TEndPoint remoteEndpoint = new TEndPoint("localhost", 10744);
+      final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, PipeInfo.getInstance().getScanStatus(sourceId).getEdgeFragmentId(), "0");
+      final String remotePlanNodeId = "receive_test_"+sourceId;
+      final String localPlanNodeId = "send_test_"+sourceId;
+      final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, fragmentId, "0");
+      int channelNum = 1;
+      AtomicInteger cnt = new AtomicInteger(channelNum);
+      long query_num=1;
+      FragmentInstanceContext instanceContext = new FragmentInstanceContext(query_num);
+      DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
+      sinkHandle =
+              MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
+                      Collections.singletonList(
+                              new DownStreamChannelLocation(
+                                      remoteEndpoint,
+                                      remoteFragmentInstanceId,
+                                      remotePlanNodeId)),
+                      downStreamChannelIndex,
+                      ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+                      localFragmentInstanceId,
+                      localPlanNodeId,
+                      instanceContext);
+      PipeInfo.getInstance().getScanStatus(sourceId).setSinkHandle(this.sinkHandle);
 
+      sinkHandle.tryOpenChannel(0);
+    }
+  }
   @Override
   public OperatorContext getOperatorContext() {
     return operatorContext;
@@ -108,7 +177,19 @@ public class FilterAndProjectOperator implements ProcessOperator {
     }
 
     TsBlock filterResult = getFilterTsBlock(input);
+    if(PipeInfo.getInstance().getPipeStatus() &&  PipeInfo.getInstance().isFilter()){
+      if(filterResult.getPositionCount()!=0 && !sinkHandle.isAborted()){
+        try {
+          Thread.sleep(2);
+          //          System.out.println("waiting");
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
 
+        sinkHandle.send(filterResult);//发送数据
+        System.out.println("filter scan send");
+      }
+    }
     // contains non-mappable udf, we leave calculation for TransformOperator
     if (hasNonMappableUDF) {
       return filterResult;
@@ -214,7 +295,22 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return inputOperator.hasNextWithTimer();
+    boolean unfinished=inputOperator.hasNextWithTimer();
+    if(!unfinished && PipeInfo.getInstance().getPipeStatus() && PipeInfo.getInstance().isFilter()){
+      while(sinkHandle.getChannel(0).getNumOfBufferedTsBlocks()!=0){
+        try {
+          Thread.sleep(10);//时间
+          //          System.out.println("waiting");
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
+      sinkHandle.setNoMoreTsBlocksOfOneChannel(0);
+      sinkHandle.close();
+      System.out.println("close finished");
+
+    }
+    return unfinished;
   }
 
   @Override

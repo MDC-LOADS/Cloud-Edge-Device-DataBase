@@ -1296,19 +1296,23 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             visitor.process(expression, projectColumnTransformerContext));
       }
     }
-
+    PipeInfo pipeInfo=PipeInfo.getInstance();
+    int sourceId=Integer.parseInt(node.getPlanNodeId().getId())-1;
+    int fragmentId=pipeInfo.getFragmentId()-1;
     Operator filter =
-        new FilterAndProjectOperator(
-            operatorContext,
-            inputOperator,
-            filterOutputDataTypes,
-            filterLeafColumnTransformerList,
-            filterOutputTransformer,
-            commonTransformerList,
-            projectLeafColumnTransformerList,
-            projectOutputTransformerList,
-            hasNonMappableUdf,
-            true);
+            new FilterAndProjectOperator(
+                    operatorContext,
+                    inputOperator,
+                    filterOutputDataTypes,
+                    filterLeafColumnTransformerList,
+                    filterOutputTransformer,
+                    commonTransformerList,
+                    projectLeafColumnTransformerList,
+                    projectOutputTransformerList,
+                    hasNonMappableUdf,
+                    true,
+                    sourceId,
+                    fragmentId);
 
     // Project expressions don't contain Non-Mappable UDF, TransformOperator is not needed
     if (!hasNonMappableUdf) {

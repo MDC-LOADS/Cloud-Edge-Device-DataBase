@@ -84,7 +84,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
     this.fragmentId=fragmentId;
 
-    if(PipeInfo.getInstance().getPipeStatus()){
+    if(PipeInfo.getInstance().getPipeStatus() && !PipeInfo.getInstance().isFilter()){
       final String queryId = "test_query_"+sourceId.getId();
                                                //    final String queryId_s = "test_query_s_"+sourceId.getId();
       final TEndPoint remoteEndpoint = new TEndPoint("localhost", 10744);
@@ -133,9 +133,18 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
 //      for(long time:times){
 //        System.out.println(time);
 //      }
-      System.out.println("localfragmentid:"+fragmentId);
-      System.out.println("remoteid:"+PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).getEdgeFragmentId());
-      sinkHandle.send(resultTsBlock);//发送数据
+      if(!PipeInfo.getInstance().isFilter()){
+        if(resultTsBlock.getPositionCount()!=0 && !sinkHandle.isAborted()){
+          try {
+            Thread.sleep(2);
+            //          System.out.println("waiting");
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+          sinkHandle.send(resultTsBlock);//发送数据
+//          System.out.println("series scan send");
+        }
+      }
 //      System.out.println("isNoMoreTs:"+ sinkHandle.getChannel(0).isNoMoreTsBlocks());
 
 //      sinkHandle.wait();
@@ -179,7 +188,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
 
       finished = builder.isEmpty();
       System.out.println("finished="+finished);
-      if(finished && PipeInfo.getInstance().getPipeStatus()){
+      if(finished && PipeInfo.getInstance().getPipeStatus() && !PipeInfo.getInstance().isFilter()){
         while(sinkHandle.getChannel(0).getNumOfBufferedTsBlocks()!=0){
           try {
             Thread.sleep(10);
@@ -190,7 +199,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
         }
         sinkHandle.setNoMoreTsBlocksOfOneChannel(0);
         sinkHandle.close();
-        System.out.println("close finished");
+//        System.out.println("close finished");
 
       }
 

@@ -176,7 +176,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
                     localPlanNodeId,
                     instanceContext);
     PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).setSinkHandle(this.sinkHandle);
-    System.out.println("sink");
+//    System.out.println("sink");
     if(PipeInfo.getInstance().getPipeStatus()){
       sinkHandle.tryOpenChannel(0);
     }
@@ -253,19 +253,19 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
             throw new RuntimeException(e);
           }
           sinkHandle.send(resultTsBlock);//发送数据
-          System.out.println("send");
-          Column[] valueColumns = resultTsBlock.getValueColumns();
-          System.out.println("receive columns binary:");
-          float[] floatColumn=valueColumns[0].getFloats();
-          for(float floatObject:floatColumn){
-            System.out.println(floatObject);
-          }
-          TimeColumn timeColumn=resultTsBlock.getTimeColumn();
-          long[] times=timeColumn.getTimes();
-          System.out.println("receive time columns:");
-          for(long time:times){
-            System.out.println(time);
-          }
+//          System.out.println("send");
+//          Column[] valueColumns = resultTsBlock.getValueColumns();
+//          System.out.println("receive columns binary:");
+//          float[] floatColumn=valueColumns[0].getFloats();
+//          for(float floatObject:floatColumn){
+//            System.out.println(floatObject);
+//          }
+//          TimeColumn timeColumn=resultTsBlock.getTimeColumn();
+//          long[] times=timeColumn.getTimes();
+//          System.out.println("receive time columns:");
+//          for(long time:times){
+//            System.out.println(time);
+//          }
         }
       }
       resultTsBlockBuilder.reset();

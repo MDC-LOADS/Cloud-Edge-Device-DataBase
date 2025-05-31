@@ -13,6 +13,7 @@ public class PipeInfo {
 
     private boolean aggregationStatus;
 
+    private boolean filter;
 
     // 私有构造方法，避免外部实例化
     private PipeInfo() {
@@ -64,4 +65,8 @@ public class PipeInfo {
     public void clearAllScanStatus(){
         this.scanStatusInfos=new HashMap<>();
     }
+    public void setFilter(boolean filter){this.filter=filter;}
+
+
+    public boolean isFilter(){return filter;}
 }

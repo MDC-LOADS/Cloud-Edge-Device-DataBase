@@ -13,6 +13,8 @@ import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.layered.TFramedTransport;
 
+import java.net.InetSocketAddress;
+
 public class ServerStart {
     public void start(){
         //多线程阻塞
@@ -39,7 +41,7 @@ public class ServerStart {
 //        }
         //多线程非阻塞
         try{
-            TNonblockingServerSocket transport =new TNonblockingServerSocket(9091);
+            TNonblockingServerSocket transport =new TNonblockingServerSocket(new InetSocketAddress("0.0.0.0", 9091));//9091
             PipeCtoEService.Processor processor = new PipeCtoEService.Processor(new ServiceImpl());
             TBinaryProtocol.Factory protocolFactory = new TBinaryProtocol.Factory();
             TFramedTransport.Factory tTransport = new TFramedTransport.Factory();
@@ -50,7 +52,7 @@ public class ServerStart {
             targs.transportFactory(tTransport);
 
             TServer server = new THsHaServer(targs);
-            System.out.println("Starting the cloud server...");
+//            System.out.println("Starting the cloud server...");
             server.serve();
         }catch(Exception e){
             e.printStackTrace();

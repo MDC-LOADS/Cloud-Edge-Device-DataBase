@@ -51,9 +51,17 @@ class ExcuteSqlRunnable implements Runnable {
     }
     @Override
     public void run() {
-
+        if (sql.toLowerCase().contains("where")) {
+            PipeInfo pipeInfo=PipeInfo.getInstance();
+            pipeInfo.setFilter(true);
+//            System.out.println("filter select");
+        }else{
+            PipeInfo pipeInfo=PipeInfo.getInstance();
+            pipeInfo.setFilter(false);
+//            System.out.println("scan select");
+        }
         ClientRPCServiceImpl clientRPCService = new ClientRPCServiceImpl();
         clientRPCService.excuteIdentitySql(sql);
-        System.out.println("start sql!!!!!!!!!!!!");
+//        System.out.println("start sql!!!!!!!!!!!!");
     }
 }
