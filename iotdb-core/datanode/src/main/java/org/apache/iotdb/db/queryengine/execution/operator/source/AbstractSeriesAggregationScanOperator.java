@@ -252,7 +252,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
       while (!isBlocked.isDone()&&!sourceHandle.isFinished()) {
         try {
           Thread.sleep(10);//时间
-          System.out.println("waiting");
+//          System.out.println("waiting");
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
@@ -273,30 +273,30 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 //          System.out.println(time);
 //        }
         result=tsBlock_rev;
-        Column[] valueColumns = result.getValueColumns();
-        System.out.println("receive columns binary:");
-        float[] floatColumn=valueColumns[0].getFloats();
-        for(float floatObject:floatColumn){
-          System.out.println(floatObject);
-        }
-        TimeColumn timeColumn=result.getTimeColumn();
-        long[] times=timeColumn.getTimes();
-        System.out.println("receive time columns:");
-        for(long time:times){
-          System.out.println(time);
-        }
+//        Column[] valueColumns = result.getValueColumns();
+//        System.out.println("receive columns binary:");
+//        float[] floatColumn=valueColumns[0].getFloats();
+//        for(float floatObject:floatColumn){
+//          System.out.println(floatObject);
+//        }
+//        TimeColumn timeColumn=result.getTimeColumn();
+//        long[] times=timeColumn.getTimes();
+//        System.out.println("receive time columns:");
+//        for(long time:times){
+//          System.out.println(time);
+//        }
         for(int i=0;i<result.getPositionCount();i++){
           curTimeRange = timeRangeIterator.nextTimeRange();
         }
         PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).setStartTime(curTimeRange.getMin());
         PipeInfo.getInstance().getScanStatus(Integer.parseInt(sourceId.getId())).setSetStartTime(true);
       }else{
-        //TODO:如果关闭了，需要重新启动scanUtil
+        //如果关闭了，需要重新启动scanUtil
         if(pipeInfo.getPipeStatus()){
           //还在启动，说明是数据查没了
           finished=true;
           curTimeRange=timeRangeIterator.nextTimeRange();
-          System.out.println("curtime:"+curTimeRange+"time:"+timeRangeIterator.hasNextTimeRange());
+//          System.out.println("curtime:"+curTimeRange+"time:"+timeRangeIterator.hasNextTimeRange());
           pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).setStatus(false);
           sourceHandle=null;
           return tsBlock_rev;

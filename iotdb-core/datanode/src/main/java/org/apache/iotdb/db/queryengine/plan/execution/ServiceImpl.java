@@ -18,11 +18,11 @@ public class ServiceImpl implements PipeEtoCService.Iface{
     public void AckMessage(int CloudFragmentId, int SourceId) throws TException {
         PipeInfo pipeInfo=PipeInfo.getInstance();
         pipeInfo.getScanStatus(SourceId).setCloudFragmentId(CloudFragmentId);
-        System.out.println("CloudFragmentId:"+CloudFragmentId+"sourceid"+SourceId);
+//        System.out.println("CloudFragmentId:"+CloudFragmentId+"sourceid"+SourceId);
         while((!pipeInfo.getScanStatus(SourceId).isSetOffset()) && (!pipeInfo.getScanStatus(SourceId).isSetStartTime())){
             try {
                 Thread.sleep(10);//时间
-                System.out.println("waiting"+pipeInfo.getScanStatus(SourceId).isSetStartTime());
+//                System.out.println("waiting"+pipeInfo.getScanStatus(SourceId).isSetStartTime());
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -38,7 +38,7 @@ public class ServiceImpl implements PipeEtoCService.Iface{
             transport.open();
             // 调用服务方法
             client.AnsMessage(pipeInfo.getScanStatus(SourceId).getEdgeFragmentId(),SourceId,pipeInfo.getScanStatus(SourceId).getOffset());
-            System.out.println("ansData:"+SourceId+" sent successfully.");
+//            System.out.println("ansData:"+SourceId+" sent successfully.");
         } catch (TException x) {
             x.printStackTrace();
         }finally {

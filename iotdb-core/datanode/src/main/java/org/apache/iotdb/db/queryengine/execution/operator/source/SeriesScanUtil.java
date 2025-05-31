@@ -339,7 +339,8 @@ public class SeriesScanUtil {
     if(firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile()) && PipeInfo.getInstance().getPipeStatus()){
       if(PipeInfo.getInstance().getScanStatus(ScanOperatorId).getStartTime()==0){
         PipeInfo.getInstance().getScanStatus(ScanOperatorId).setSetOffset(true);
-        System.out.println("offset:"+PipeInfo.getInstance().getScanStatus(ScanOperatorId).getOffset());
+//        PipeInfo.getInstance().getScanStatus(ScanOperatorId).setSetStartTime(true);
+//        System.out.println("offset:"+PipeInfo.getInstance().getScanStatus(ScanOperatorId).getOffset());
       }
 
       return false;

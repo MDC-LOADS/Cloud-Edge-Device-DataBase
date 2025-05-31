@@ -170,7 +170,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
 //        }
         appendToBuilder(tsBlock_rev);
       }else{
-        //TODO:如果关闭了，需要重新启动scanUtil
+        //如果关闭了，需要重新启动scanUtil
         if(pipeInfo.getPipeStatus()){
           //还在启动，说明是数据查没了
           finished=true;
@@ -204,9 +204,10 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
 //      for(long time:times){
 //        System.out.println(time);
 //      }
-    if(pipeInfo.getPipeStatus()){//如果pipe开启就一直设置offset
-        pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).setOffset(offset);
-    }
+    pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).setOffset(offset);
+//    if(pipeInfo.getPipeStatus()){//如果pipe开启就一直设置offset
+//        pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).setOffset(offset);
+//    }
 //    if(pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).isSetOffset()){
 //      System.out.println("offset:"+pipeInfo.getScanStatus(Integer.parseInt(sourceId.getId())).getOffset());
 //    }

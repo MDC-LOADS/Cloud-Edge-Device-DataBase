@@ -14,6 +14,8 @@ import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.layered.TFramedTransport;
 
+import java.net.InetSocketAddress;
+
 
 public class ServerStart {
     public void start(){
@@ -41,7 +43,7 @@ public class ServerStart {
 //        }
         //多线程非阻塞
         try{
-            TNonblockingServerSocket transport =new TNonblockingServerSocket(9090);
+            TNonblockingServerSocket transport =new TNonblockingServerSocket(new InetSocketAddress("0.0.0.0", 9090));//9090
             PipeEtoCService.Processor processor = new PipeEtoCService.Processor(new ServiceImpl());
             TBinaryProtocol.Factory protocolFactory = new TBinaryProtocol.Factory();
             TFramedTransport.Factory tTransport = new TFramedTransport.Factory();
@@ -52,7 +54,7 @@ public class ServerStart {
             targs.transportFactory(tTransport);
 
             TServer server = new THsHaServer(targs);
-            System.out.println("Starting the edge server...");
+//            System.out.println("Starting the edge server...");
             server.serve();
         }catch(Exception e){
             e.printStackTrace();
